@@ -50,6 +50,7 @@ public class TimePartitionedDataPublisher extends BaseDataPublisher {
    *
    * For example, move {writerOutput}/2015/04/08/15/output.avro to {publisherOutput}/2015/04/08/15/output.avro
    */
+  
   @Override
   protected void addWriterOutputToExistingDir(Path writerOutput, Path publisherOutput, WorkUnitState workUnitState,
       int branchId, ParallelRunner parallelRunner) throws IOException {
@@ -59,8 +60,19 @@ public class TimePartitionedDataPublisher extends BaseDataPublisher {
       String filePathStr = status.getPath().toString();
       String pathSuffix =
           filePathStr.substring(filePathStr.indexOf(writerOutput.toString()) + writerOutput.toString().length() + 1);
-      Path outputPath = new Path(publisherOutput, pathSuffix);
+      
+      String[] directories = pathSuffix.split("\\/");
+			String topic = directories[1];
+			String year = directories[3];
+			String month = directories[4];
+			String date = directories[5];
+			String hour = directories[6];
+			String filename = directories[7];
 
+			String outputPathString = year + "/" + month + "/" + date + "/" + hour + "/" + topic + "/" + filename;
+
+			Path outputPath = new Path(publisherOutput, outputPathString);
+			
       WriterUtils.mkdirsWithRecursivePermission(this.publisherFileSystemByBranches.get(branchId), outputPath.getParent(),
           this.permissions.get(branchId));
 

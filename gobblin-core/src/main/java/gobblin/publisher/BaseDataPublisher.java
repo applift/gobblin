@@ -195,7 +195,7 @@ public class BaseDataPublisher extends SingleTaskDataPublisher {
         // If publishSingleTaskData=true, writerOutputPathMoved is ignored.
         return;
       }
-
+      
       if (this.publisherFileSystemByBranches.get(branchId).exists(publisherOutputDir)) {
         // The final output directory already exists, check if the job is configured to replace it.
         // If publishSingleTaskData=true, final output directory is never replaced.
@@ -204,6 +204,7 @@ public class BaseDataPublisher extends SingleTaskDataPublisher {
 
         // If the final output directory is not configured to be replaced, put new data to the existing directory.
         if (!replaceFinalOutputDir) {
+        	LOG.warn("Applift: Adding Writer Output to existing direc.");
           addWriterOutputToExistingDir(writerOutputDir, publisherOutputDir, state, branchId, parallelRunner);
           writerOutputPathsMoved.add(writerOutputDir);
           return;
@@ -273,7 +274,6 @@ public class BaseDataPublisher extends SingleTaskDataPublisher {
       WorkUnitState workUnitState, int branchId, ParallelRunner parallelRunner) throws IOException {
     boolean preserveFileName = workUnitState.getPropAsBoolean(ForkOperatorUtils.getPropertyNameForBranch(
         ConfigurationKeys.SOURCE_FILEBASED_PRESERVE_FILE_NAME, this.numBranches, branchId), false);
-
     // Go through each file in writerOutputDir and move it into publisherOutputDir
     for (FileStatus status : this.writerFileSystemByBranches.get(branchId).listStatus(writerOutputDir)) {
 

@@ -17,47 +17,47 @@ import gobblin.util.ParallelRunner;
 import gobblin.util.WriterUtils;
 
 public class TimePartitionedCustomDataPublisher extends BaseDataPublisher {
-  private static final Logger LOG = LoggerFactory.getLogger(TimePartitionedCustomDataPublisher.class);
-	
+	private static final Logger LOG = LoggerFactory.getLogger(TimePartitionedCustomDataPublisher.class);
+
 	public TimePartitionedCustomDataPublisher(State state) throws IOException {
 		super(state);
 	}
-	
+
 	/**
-   * This method needs to be overridden for TimePartitionedCustomDataPublisher, since the output folder structure
-   * contains timestamp, we have to move the files recursively.
-   *
-   * For example, move {writerOutput}/2015/04/08/15/output.avro to {publisherOutput}/2015/04/08/15/output.avro
-   */
-  @Override
-  protected void addWriterOutputToExistingDir(Path writerOutput, Path publisherOutput, WorkUnitState workUnitState,
-      int branchId, ParallelRunner parallelRunner) throws IOException {
+	 * This method needs to be overridden for TimePartitionedCustomDataPublisher,
+	 * since the output folder structure contains timestamp, we have to move the
+	 * files recursively.
+	 *
+	 * For example, move {writerOutput}/2015/04/08/15/output.avro to
+	 * {publisherOutput}/2015/04/08/15/output.avro
+	 */
+	@Override
+	protected void addWriterOutputToExistingDir(Path writerOutput, Path publisherOutput, WorkUnitState workUnitState,
+	    int branchId, ParallelRunner parallelRunner) throws IOException {
+		for (FileStatus status : FileListUtils.listFilesRecursively(this.writerFileSystemByBranches.get(branchId),
+		    writerOutput)) {
+			String filePathStr = status.getPath().toString();
+			String pathSuffix = filePathStr
+			    .substring(filePathStr.indexOf(writerOutput.toString()) + writerOutput.toString().length() + 1);
+			String[] directories = pathSuffix.split("\\/");
+			String topic = directories[1];
+			String year = directories[3];
+			String month = directories[4];
+			String date = directories[5];
+			String hour = directories[6];
+			String filename = directories[7];
 
-    for (FileStatus status : FileListUtils.listFilesRecursively(this.writerFileSystemByBranches.get(branchId),
-        writerOutput)) {
-      String filePathStr = status.getPath().toString();
-      String pathSuffix =
-          filePathStr.substring(filePathStr.indexOf(writerOutput.toString()) + writerOutput.toString().length() + 1);
-      
-      String[] directories = pathSuffix.split("\\/");
-      String topic = directories[1];
-      String year = directories[3];
-      String month = directories[4];
-      String date = directories[5];
-      String hour = directories[6];
-      String filename = directories[7];
-      
-      String outputPathString = year+"/"+month+"/"+date+"/"+hour+"/"+topic+"/"+filename;
-      
-      Path outputPath = new Path(publisherOutput, outputPathString);
+			String outputPathString = year + "/" + month + "/" + date + "/" + hour + "/" + topic + "/" + filename;
 
-      WriterUtils.mkdirsWithRecursivePermission(this.publisherFileSystemByBranches.get(branchId), outputPath.getParent(),
-          this.permissions.get(branchId));
+			Path outputPath = new Path(publisherOutput, outputPathString);
 
-      LOG.info(String.format("Moving %s to %s", status.getPath(), outputPath));
-      parallelRunner.movePath(status.getPath(), this.publisherFileSystemByBranches.get(branchId),
-          outputPath, Optional.<String> absent());
-    }
-  }
+			WriterUtils.mkdirsWithRecursivePermission(this.publisherFileSystemByBranches.get(branchId),
+			    outputPath.getParent(), this.permissions.get(branchId));
+
+			LOG.info(String.format("Moving %s to %s", status.getPath(), outputPath));
+			parallelRunner.movePath(status.getPath(), this.publisherFileSystemByBranches.get(branchId), outputPath,
+			    Optional.<String> absent());
+		}
+	}
 
 }
