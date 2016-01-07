@@ -12,7 +12,6 @@
 
 package gobblin.runtime.mapreduce;
 
-import java.util.Enumeration;
 import java.util.Properties;
 
 import org.apache.commons.cli.BasicParser;
@@ -55,14 +54,6 @@ public class CliMRJobLauncher extends Configured implements Tool {
   public int run(String[] args)
       throws Exception {
     final Properties jobProps = JobConfigurationUtils.combineSysAndJobProperties(this.sysConfig, this.jobConfig);
-    
-    Enumeration<Object> keys = jobProps.keys();
-    while (keys.hasMoreElements()) {
-      String key = (String)keys.nextElement();
-      String value = (String)jobProps.get(key);
-      System.out.println("Applift : "+ key + ": " + value);
-    }
-    
     
     Closer closer = Closer.create();
     try {

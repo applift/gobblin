@@ -42,7 +42,7 @@ public class TimePartitionedCustomDataPublisher extends BaseDataPublisher {
 			String[] directories = pathSuffix.split("\\/");
 			
 			Path basePath = new Path(publisherOutput.getName().split("\\/")[0]);
-			String topic = publisherOutput.getName().split("\\/")[1];
+			String topic = publisherOutput.getName().split("\\/")[2];
 			
 			String year = directories[0];
 			String month = directories[1];
@@ -62,12 +62,4 @@ public class TimePartitionedCustomDataPublisher extends BaseDataPublisher {
 			    Optional.<String> absent());
 		}
 	}
-	
-	@Override
-	protected Path getPublisherOutputDir(WorkUnitState workUnitState, int branchId) {
-    String basePath = WriterUtils.getDataPublisherFinalDir(workUnitState, this.numBranches, branchId).getParent().getName();
-    String[] directories = basePath.split("\\/KAFKA\\/");
-    return new Path(directories[0]+"/"+directories[1]);
-  }
-
 }
