@@ -21,6 +21,8 @@ repositories {
 }
 
 dependencies {
+    compile project(':gobblin-api')
+
     compile externalDependency.slf4j
     compile externalDependency.log4j
     compile externalDependency.typesafeConfig

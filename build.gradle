@@ -22,7 +22,7 @@ apply plugin: 'org.inferred.processors'
 apply plugin: 'idea'
 
 idea.project {
-  languageLevel = JavaVersion.VERSION_1_7
+  ext.languageLevel = JavaVersion.VERSION_1_7
 }
 
 ext.build_script_dir = "${projectDir.path}/build_script"
@@ -51,11 +51,11 @@ if (!project.hasProperty('group') || project.group.length() == 0) {
 }
 
 if (!project.hasProperty('artifactRepository') || project.artifactRepository.length() == 0) {
-    project.artifactRepository = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+    ext.artifactRepository = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
 }
 
 if (!project.hasProperty('artifactSnapshotRepository') || project.artifactSnapshotRepository.length() == 0) {
-    project.artifactSnapshotRepository = "https://oss.sonatype.org/content/repositories/snapshots/"
+    ext.artifactSnapshotRepository = "https://oss.sonatype.org/content/repositories/snapshots/"
 }
 
 if (!project.hasProperty('version') || project.version == 'unspecified') {
@@ -92,7 +92,7 @@ if (!project.hasProperty('hadoopVersion')) {
 }
 
 if (!project.hasProperty('hiveVersion')) {
-  ext.hiveVersion = '1.2.1'
+  ext.hiveVersion = '1.0.1'
 }
 
 if (!project.hasProperty('pegasusVersion')) {
@@ -194,6 +194,7 @@ ext.externalDependency = [
   "curatorTest": "org.apache.curator:curator-test:2.8.0",
   "hamcrest": "org.hamcrest:hamcrest-all:1.3",
   "joptSimple": "net.sf.jopt-simple:jopt-simple:4.9",
+  "protobuf": "com.google.protobuf:protobuf-java:2.6.1",
   "pegasus" : [
     "data" : "com.linkedin.pegasus:data:"+pegasusVersion,
     "generator" : "com.linkedin.pegasus:generator:"+pegasusVersion,
@@ -439,7 +440,7 @@ plugins.withType(JavaPlugin) {
   // Configure the IDEA plugin to (1) add the codegen as source dirs and (2) work around
   // an apparent bug in the plugin which doesn't set the outputDir/testOutputDir as documented
   idea.project {
-    languageLevel = JavaVersion.VERSION_1_7
+    ext.languageLevel = JavaVersion.VERSION_1_7
   }
   idea.module {
     // Gradle docs claim the two settings below are the default, but
@@ -483,5 +484,23 @@ if (JavaVersion.current().isJava8Compatible()) {
       options.addStringOption('Xdoclint:none', '-quiet')
     }
   }
+}
+
+task dotProjectDependencies(description: 'List of gobblin project dependencies in dot format') << {
+  println "// ========= Start of project dependency graph ======= "
+  println "digraph project_dependencies {"
+  subprojects.each { Project project ->
+    def project_node_name = project.name.replaceAll("-","_")
+    if (project.configurations.findByName("compile") != null) {
+      project.configurations.compile.dependencies.each { Dependency dep ->
+        if (dep instanceof ProjectDependency) {
+          def dep_node_name = dep.dependencyProject.name.replaceAll("-","_")
+          println "\t${project_node_name} -> ${dep_node_name};"
+        }
+      }
+    }
+  }
+  println "}"
+  println "// ========= End of project dependency graph ======= "
 }
 
