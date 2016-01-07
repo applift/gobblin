@@ -42,6 +42,7 @@ public class TimePartitionedDataPublisher extends BaseDataPublisher {
 
   public TimePartitionedDataPublisher(State state) throws IOException {
     super(state);
+    
   }
 
   /**
@@ -61,17 +62,7 @@ public class TimePartitionedDataPublisher extends BaseDataPublisher {
       String pathSuffix =
           filePathStr.substring(filePathStr.indexOf(writerOutput.toString()) + writerOutput.toString().length() + 1);
       
-      String[] directories = pathSuffix.split("\\/");
-			String topic = directories[1];
-			String year = directories[3];
-			String month = directories[4];
-			String date = directories[5];
-			String hour = directories[6];
-			String filename = directories[7];
-
-			String outputPathString = year + "/" + month + "/" + date + "/" + hour + "/" + topic + "/" + filename;
-
-			Path outputPath = new Path(publisherOutput, outputPathString);
+			Path outputPath = new Path(publisherOutput, pathSuffix);
 			
       WriterUtils.mkdirsWithRecursivePermission(this.publisherFileSystemByBranches.get(branchId), outputPath.getParent(),
           this.permissions.get(branchId));

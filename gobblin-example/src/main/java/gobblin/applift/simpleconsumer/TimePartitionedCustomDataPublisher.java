@@ -40,16 +40,19 @@ public class TimePartitionedCustomDataPublisher extends BaseDataPublisher {
 			String pathSuffix = filePathStr
 			    .substring(filePathStr.indexOf(writerOutput.toString()) + writerOutput.toString().length() + 1);
 			String[] directories = pathSuffix.split("\\/");
-			String topic = directories[1];
-			String year = directories[3];
-			String month = directories[4];
-			String date = directories[5];
-			String hour = directories[6];
-			String filename = directories[7];
+			
+			Path basePath = new Path(publisherOutput.getName().split("\\/")[0]);
+			String topic = publisherOutput.getName().split("\\/")[1];
+			
+			String year = directories[0];
+			String month = directories[1];
+			String date = directories[2];
+			String hour = directories[3];
+			String filename = directories[4];
 
 			String outputPathString = year + "/" + month + "/" + date + "/" + hour + "/" + topic + "/" + filename;
 
-			Path outputPath = new Path(publisherOutput, outputPathString);
+			Path outputPath = new Path(basePath, outputPathString);
 
 			WriterUtils.mkdirsWithRecursivePermission(this.publisherFileSystemByBranches.get(branchId),
 			    outputPath.getParent(), this.permissions.get(branchId));
@@ -59,5 +62,12 @@ public class TimePartitionedCustomDataPublisher extends BaseDataPublisher {
 			    Optional.<String> absent());
 		}
 	}
+	
+	@Override
+	protected Path getPublisherOutputDir(WorkUnitState workUnitState, int branchId) {
+    String basePath = WriterUtils.getDataPublisherFinalDir(workUnitState, this.numBranches, branchId).getParent().getName();
+    String[] directories = basePath.split("\\/KAFKA\\/");
+    return new Path(directories[0]+"/"+directories[1]);
+  }
 
 }
