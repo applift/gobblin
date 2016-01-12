@@ -1,8 +1,5 @@
 package gobblin.applift.simpleconsumer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import gobblin.configuration.State;
 import gobblin.writer.partitioner.TimeBasedWriterPartitioner;
 
@@ -14,9 +11,8 @@ public class TimeBasedNotifyLogWriterPartitioner extends TimeBasedWriterPartitio
 	@Override
 	public long getRecordTimestamp(String record) {
 		String[] columns = record.split("\\|");
-		float unixTS = Float.valueOf(columns[32]);
+		float unixTS = Float.valueOf(columns[33]);
 		long timestampMS = (long) (unixTS * 1000);
 		return timestampMS;
 	}
-
 }
