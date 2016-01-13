@@ -31,6 +31,8 @@ public class LogNormalizerConverter extends Converter<Object, Object, String, St
   	String[] logRecords = inputRecord.split("\n");
   	List<String> normalizedRecords = new ArrayList<String>();
   	for(String logRecord:logRecords){
+  		if(logRecord.contains("503921465-1452665874-ISAUd-1d8a78ee-7327-4727-afcb-839b2762d42a-1-19159-1014156"))
+  			LOG.warn("Applift: Malformed Record = "+ logRecord); 
   		normalizedRecords.add(normalizeString(logRecord));
   	}
     return normalizedRecords;

@@ -7,7 +7,6 @@ import com.google.gson.JsonSyntaxException;
 
 import gobblin.configuration.State;
 import gobblin.qualitychecker.row.RowLevelPolicy;
-import gobblin.qualitychecker.row.RowLevelPolicy.Result;
 
 public class ProductionEventLogPolicy extends RowLevelPolicy {
 
