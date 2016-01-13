@@ -28,7 +28,7 @@ public class ReqLogPolicy extends RowLevelPolicy {
 		}
 		JsonObject reqLogObject = element.getAsJsonObject();
 		JsonObject reqInfoObject = reqLogObject.getAsJsonObject("req_info");
-		if (reqInfoObject == null || reqInfoObject.get("unix_ts").toString() == null)
+		if (reqInfoObject == null || reqInfoObject.get("unix_ts") == null)
 			return Result.FAILED;
 		return Result.PASSED;
 	}

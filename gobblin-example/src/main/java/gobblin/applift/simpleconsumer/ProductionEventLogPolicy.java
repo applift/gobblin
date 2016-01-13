@@ -28,7 +28,7 @@ public class ProductionEventLogPolicy extends RowLevelPolicy {
 			return Result.FAILED;
 		}
 		JsonObject productionEventObject = element.getAsJsonObject();
-		if (productionEventObject == null || productionEventObject.get("timestamp").toString() == null)
+		if (productionEventObject == null || productionEventObject.get("timestamp") == null)
 			return Result.FAILED;
 		return Result.PASSED;
 	}
