@@ -7,9 +7,11 @@ import com.google.gson.JsonSyntaxException;
 
 import gobblin.configuration.State;
 import gobblin.qualitychecker.row.RowLevelPolicy;
+import gobblin.qualitychecker.row.RowLevelPolicy.Result;
 
-public class ReqLogPolicy extends RowLevelPolicy {
-	public ReqLogPolicy(State state, Type type) {
+public class ProductionEventLogPolicy extends RowLevelPolicy {
+
+	public ProductionEventLogPolicy(State state, Type type) {
 		super(state, type);
 	}
 
@@ -26,9 +28,8 @@ public class ReqLogPolicy extends RowLevelPolicy {
 		} catch (JsonSyntaxException e) {
 			return Result.FAILED;
 		}
-		JsonObject reqLogObject = element.getAsJsonObject();
-		JsonObject reqInfoObject = reqLogObject.getAsJsonObject("req_info");
-		if (reqInfoObject == null || reqInfoObject.get("unix_ts").toString() == null)
+		JsonObject productionEventObject = element.getAsJsonObject();
+		if (productionEventObject == null || productionEventObject.get("timestamp").toString() == null)
 			return Result.FAILED;
 		return Result.PASSED;
 	}
