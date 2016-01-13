@@ -294,6 +294,7 @@ public abstract class KafkaSource<S, D> extends EventBasedSource<S, D> {
       }
     } else {
       try {
+      	LOG.warn("Applfit: Partition = "+ partition + " , PreviousOffset = "+ previousOffset);
         offsets.startAt(previousOffset);
       } catch (StartOffsetOutOfRangeException e) {
 
