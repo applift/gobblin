@@ -166,6 +166,7 @@ public class ParallelRunner implements Closeable {
           }
 
           if (deleteAfter) {
+          	LOGGER.warn("Applift: Deleting file: "+ inputFilePath+ " TimeStamp: "+ System.currentTimeMillis());
             HadoopUtils.deletePath(fs, inputFilePath, false);
           }
         } catch (Throwable t) {

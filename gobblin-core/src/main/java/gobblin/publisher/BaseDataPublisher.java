@@ -204,8 +204,7 @@ public class BaseDataPublisher extends SingleTaskDataPublisher {
 
         // If the final output directory is not configured to be replaced, put new data to the existing directory.
         if (!replaceFinalOutputDir) {
-        	LOG.warn("Applift: Adding Writer Output to existing direc.");
-          addWriterOutputToExistingDir(writerOutputDir, publisherOutputDir, state, branchId, parallelRunner);
+        	addWriterOutputToExistingDir(writerOutputDir, publisherOutputDir, state, branchId, parallelRunner);
           writerOutputPathsMoved.add(writerOutputDir);
           return;
         }

@@ -137,14 +137,14 @@ public class TaskStateCollectorService extends AbstractScheduledService {
     Queue<TaskState> taskStateQueue = Queues.newConcurrentLinkedQueue();
     try (ParallelRunner stateSerDeRunner = new ParallelRunner(stateSerDeRunnerThreads, this.fs)) {
       for (FileStatus status : fileStatuses) {
-        LOGGER.info("Found output task state file " + status.getPath());
+        LOGGER.warn("Found output task state file " + status.getPath());
         // Deserialize the TaskState and delete the file
         stateSerDeRunner.deserializeFromSequenceFile(Text.class, TaskState.class, status.getPath(),
             taskStateQueue, true);
       }
     }
 
-    LOGGER.info(String.format("Collected task state of %d completed tasks", taskStateQueue.size()));
+    LOGGER.warn(String.format("Collected task state of %d completed tasks", taskStateQueue.size()));
 
     // Add the TaskStates of completed tasks to the JobState so when the control
     // returns to the launcher, it sees the TaskStates of all completed tasks.
