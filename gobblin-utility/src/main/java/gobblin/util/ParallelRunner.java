@@ -156,8 +156,10 @@ public class ParallelRunner implements Closeable {
       public Void call() throws Exception {
         Closer closer = Closer.create();
         try {
+        	LOGGER.warn("Applift1: Reading file: "+ inputFilePath+ " TimeStamp: "+ System.currentTimeMillis());
           @SuppressWarnings("deprecation")
           SequenceFile.Reader reader = closer.register(new SequenceFile.Reader(fs, inputFilePath, fs.getConf()));
+          LOGGER.warn("Applift2: Reading file: "+ inputFilePath+ " TimeStamp: "+ System.currentTimeMillis());
           Writable key = keyClass.newInstance();
           T state = stateClass.newInstance();
           while (reader.next(key, state)) {
