@@ -28,6 +28,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Writable;
+import org.joda.time.LocalDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -156,19 +157,19 @@ public class ParallelRunner implements Closeable {
       public Void call() throws Exception {
         Closer closer = Closer.create();
         try {
-        	LOGGER.warn("Applift1: Reading file: "+ inputFilePath+ " TimeStamp: "+ System.currentTimeMillis());
+        	LOGGER.warn("Applift: Intializing Reader for file: "+ inputFilePath+ " TimeStamp: "+ LocalDateTime.now());
           @SuppressWarnings("deprecation")
           SequenceFile.Reader reader = closer.register(new SequenceFile.Reader(fs, inputFilePath, fs.getConf()));
-          LOGGER.warn("Applift2: Reading file: "+ inputFilePath+ " TimeStamp: "+ System.currentTimeMillis());
           Writable key = keyClass.newInstance();
           T state = stateClass.newInstance();
           while (reader.next(key, state)) {
             states.add(state);
             state = stateClass.newInstance();
           }
+          LOGGER.warn("Applift: Reader initilized for file: "+ inputFilePath+ " TimeStamp: "+ LocalDateTime.now());
 
           if (deleteAfter) {
-          	LOGGER.warn("Applift: Deleting file: "+ inputFilePath+ " TimeStamp: "+ System.currentTimeMillis());
+          	LOGGER.warn("Applift: Deleting file: "+ inputFilePath+ " TimeStamp: "+ LocalDateTime.now());
             HadoopUtils.deletePath(fs, inputFilePath, false);
           }
         } catch (Throwable t) {

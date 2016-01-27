@@ -22,6 +22,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.io.Text;
+import org.joda.time.LocalDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -137,7 +138,7 @@ public class TaskStateCollectorService extends AbstractScheduledService {
     Queue<TaskState> taskStateQueue = Queues.newConcurrentLinkedQueue();
     try (ParallelRunner stateSerDeRunner = new ParallelRunner(stateSerDeRunnerThreads, this.fs)) {
       for (FileStatus status : fileStatuses) {
-        LOGGER.warn("Found output task state file " + status.getPath());
+        LOGGER.warn("Found output task state file " + status.getPath() + "TimeStamp: " + LocalDateTime.now());
         // Deserialize the TaskState and delete the file
         stateSerDeRunner.deserializeFromSequenceFile(Text.class, TaskState.class, status.getPath(),
             taskStateQueue, true);
