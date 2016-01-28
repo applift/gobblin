@@ -157,7 +157,7 @@ public class ParallelRunner implements Closeable {
       public Void call() throws Exception {
         Closer closer = Closer.create();
         try {
-        	LOGGER.warn("Applift: Intializing Reader for file: "+ inputFilePath+ " TimeStamp: "+ LocalDateTime.now());
+        	LOGGER.warn("Applift: Initializing Reader for file: "+ inputFilePath+ " TimeStamp: "+ LocalDateTime.now());
           @SuppressWarnings("deprecation")
           SequenceFile.Reader reader = closer.register(new SequenceFile.Reader(fs, inputFilePath, fs.getConf()));
           Writable key = keyClass.newInstance();
@@ -166,7 +166,7 @@ public class ParallelRunner implements Closeable {
             states.add(state);
             state = stateClass.newInstance();
           }
-          LOGGER.warn("Applift: Reader initilized for file: "+ inputFilePath+ " TimeStamp: "+ LocalDateTime.now());
+          LOGGER.warn("Applift: Reader initialized for file: "+ inputFilePath+ " TimeStamp: "+ LocalDateTime.now());
 
           if (deleteAfter) {
           	LOGGER.warn("Applift: Deleting file: "+ inputFilePath+ " TimeStamp: "+ LocalDateTime.now());
