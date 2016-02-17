@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -30,7 +30,7 @@ import com.google.common.collect.Lists;
  *
  * @param <T> type of the tag value
  *
- * @author ynli
+ * @author Yinan Li
  */
 public class Tag<T> extends AbstractMap.SimpleEntry<String, T> {
 
@@ -103,7 +103,7 @@ public class Tag<T> extends AbstractMap.SimpleEntry<String, T> {
    *
    * @return a {@link List} of {@link Tag}s
    *
-   * @see {@link #tagValueToString(Tag)}
+   * @see #tagValueToString(Tag)
    */
   public static List<Tag<String>> tagValuesToString(List<? extends Tag<?>> tags) {
     return Lists.transform(tags, new Function<Tag<?>, Tag<String>>() {

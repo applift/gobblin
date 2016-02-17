@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -12,10 +12,7 @@
 
 package gobblin.data.management.copy;
 
-import gobblin.util.PathUtils;
-
 import java.util.Collection;
-import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
@@ -26,6 +23,8 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.Sets;
+
+import gobblin.util.PathUtils;
 
 
 public class RecursiveCopyableDatasetTest {
@@ -42,8 +41,10 @@ public class RecursiveCopyableDatasetTest {
 
     RecursiveCopyableDataset dataset = new RecursiveCopyableDataset(FileSystem.getLocal(new Configuration()), new Path(baseDir), properties);
 
-    CopyConfiguration copyConfiguration = new CopyConfiguration(new Path(destinationDir),
-        PreserveAttributes.fromMnemonicString("ugp"), new CopyContext());
+    CopyConfiguration copyConfiguration =
+        CopyConfiguration.builder().targetRoot(new Path(destinationDir))
+            .preserve(PreserveAttributes.fromMnemonicString("ugp")).build();
+
     Collection<CopyableFile> files = dataset.getCopyableFiles(FileSystem.getLocal(new Configuration()), copyConfiguration);
 
     Assert.assertEquals(files.size(), 3);
@@ -58,7 +59,7 @@ public class RecursiveCopyableDatasetTest {
       Assert.assertTrue(paths.contains(originRelativePath));
       Assert.assertTrue(paths.contains(targetRelativePath));
       Assert.assertEquals(originRelativePath, targetRelativePath);
-      Assert.assertEquals(copyableFile.getAncestorsOwnerAndPermission().size(), originRelativePath.depth() - 1);
+      Assert.assertEquals(copyableFile.getAncestorsOwnerAndPermission().size(), copyableFile.getOrigin().getPath().depth());
     }
 
   }

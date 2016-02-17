@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -43,32 +43,36 @@ import gobblin.metastore.MetaStoreModule;
 /**
  * A server running the Rest.li resource for job execution queries.
  *
- * @author ynli
+ * @author Yinan Li
  */
 public class JobExecutionInfoServer extends AbstractIdleService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JobExecutionInfoServer.class);
 
+  private final URI serverUri;
+  private final int port;
   private final Properties properties;
   private volatile Optional<HttpServer> httpServer;
 
   public JobExecutionInfoServer(Properties properties) {
     this.properties = properties;
+
+    port = Integer.parseInt(
+            properties.getProperty(ConfigurationKeys.REST_SERVER_PORT_KEY, ConfigurationKeys.DEFAULT_REST_SERVER_PORT));
+    serverUri = URI.create(String.format("http://%s:%d",
+            properties.getProperty(ConfigurationKeys.REST_SERVER_HOST_KEY, ConfigurationKeys.DEFAULT_REST_SERVER_HOST),
+            port));
   }
 
   @Override
   protected void startUp()
       throws Exception {
     // Server port
-    int port = Integer.parseInt(
-        properties.getProperty(ConfigurationKeys.REST_SERVER_PORT_KEY, ConfigurationKeys.DEFAULT_REST_SERVER_PORT));
 
     // Server configuration
     RestLiConfig config = new RestLiConfig();
     config.addResourcePackageNames(JobExecutionInfoResource.class.getPackage().getName());
-    config.setServerNodeUri(URI.create(String.format("http://%s:%d",
-        properties.getProperty(ConfigurationKeys.REST_SERVER_HOST_KEY, ConfigurationKeys.DEFAULT_REST_SERVER_HOST),
-        port)));
+    config.setServerNodeUri(serverUri);
     config.setDocumentationRequestHandler(new DefaultDocumentationRequestHandler());
 
     // Handle dependency injection
@@ -93,5 +97,9 @@ public class JobExecutionInfoServer extends AbstractIdleService {
       LOGGER.info("Stopping the job execution information server");
       this.httpServer.get().stop();
     }
+  }
+
+  public URI getServerUri() {
+    return serverUri;
   }
 }

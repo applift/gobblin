@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -54,12 +54,12 @@ import com.google.common.io.Files;
 import com.google.common.util.concurrent.AbstractIdleService;
 
 import gobblin.configuration.ConfigurationKeys;
-import gobblin.runtime.EmailNotificationJobListener;
 import gobblin.runtime.JobException;
 import gobblin.runtime.JobLauncher;
 import gobblin.runtime.JobLauncherFactory;
-import gobblin.runtime.JobListener;
-import gobblin.runtime.RunOnceJobListener;
+import gobblin.runtime.listeners.EmailNotificationJobListener;
+import gobblin.runtime.listeners.JobListener;
+import gobblin.runtime.listeners.RunOnceJobListener;
 import gobblin.util.ExecutorsUtils;
 import gobblin.util.JobLauncherUtils;
 import gobblin.util.SchedulerUtils;
@@ -80,7 +80,7 @@ import gobblin.util.SchedulerUtils;
  *     {@link org.quartz.Trigger} for the job.
  * </p>
  *
- * @author ynli
+ * @author Yinan Li
  */
 public class JobScheduler extends AbstractIdleService {
 
@@ -174,7 +174,7 @@ public class JobScheduler extends AbstractIdleService {
    * </p>
    *
    * @param jobProps Job configuration properties
-   * @param jobListener {@link gobblin.runtime.JobListener} used for callback,
+   * @param jobListener {@link JobListener} used for callback,
    *                    can be <em>null</em> if no callback is needed.
    * @throws JobException when there is anything wrong
    *                      with scheduling the job
@@ -192,7 +192,7 @@ public class JobScheduler extends AbstractIdleService {
    * </p>
    *
    * @param jobProps Job configuration properties
-   * @param jobListener {@link gobblin.runtime.JobListener} used for callback,
+   * @param jobListener {@link JobListener} used for callback,
    *                    can be <em>null</em> if no callback is needed.
    * @param additionalJobData additional job data in a {@link Map}
    * @param jobClass Quartz job class

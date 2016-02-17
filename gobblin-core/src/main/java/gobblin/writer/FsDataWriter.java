@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -204,9 +204,9 @@ public abstract class FsDataWriter<D> implements DataWriter<D>, FinalState {
 
     if (this.shouldIncludeRecordCountInFileName) {
       String filePathWithRecordCount = addRecordCountToFileName();
-      this.properties.appendToListProp(this.allOutputFilesPropName, filePathWithRecordCount);
+      this.properties.appendToSetProp(this.allOutputFilesPropName, filePathWithRecordCount);
     } else {
-      this.properties.appendToListProp(this.allOutputFilesPropName, getOutputFilePath());
+      this.properties.appendToSetProp(this.allOutputFilesPropName, getOutputFilePath());
     }
   }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -12,13 +12,10 @@
 
 package gobblin.publisher;
 
-import com.google.common.base.Optional;
 import java.io.IOException;
 
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import gobblin.configuration.State;
 import gobblin.configuration.WorkUnitState;
@@ -37,8 +34,6 @@ import gobblin.util.WriterUtils;
  * @author ziliu
  */
 public class TimePartitionedDataPublisher extends BaseDataPublisher {
-
-  private static final Logger LOG = LoggerFactory.getLogger(TimePartitionedDataPublisher.class);
 
   public TimePartitionedDataPublisher(State state) throws IOException {
     super(state);
@@ -67,9 +62,7 @@ public class TimePartitionedDataPublisher extends BaseDataPublisher {
       WriterUtils.mkdirsWithRecursivePermission(this.publisherFileSystemByBranches.get(branchId), outputPath.getParent(),
           this.permissions.get(branchId));
 
-      LOG.info(String.format("Moving %s to %s", status.getPath(), outputPath));
-      parallelRunner.movePath(status.getPath(), this.publisherFileSystemByBranches.get(branchId),
-          outputPath, Optional.<String> absent());
+      movePath(parallelRunner, status.getPath(), outputPath, branchId);
     }
   }
 }

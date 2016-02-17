@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -20,7 +20,6 @@ import gobblin.source.extractor.extract.sftp.SftpLightWeightFileSystem;
 import gobblin.util.HadoopUtils;
 
 import java.io.IOException;
-import java.util.List;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -43,8 +42,8 @@ import com.google.common.io.Closer;
  * {@link FileSystem#get(org.apache.hadoop.conf.Configuration)} call. Closing is necessary as the file system maintains
  * a session with the remote server.
  *
- * @see {@link HadoopUtils#newConfiguration()}
- * @See {@link SftpLightWeightFileSystem}
+ * @see HadoopUtils#newConfiguration()
+ * @See SftpLightWeightFileSystem
  *      </p>
  */
 @Slf4j
@@ -68,9 +67,9 @@ public class CloseableFsCopySource extends CopySource {
   @Override
   public Extractor<String, FileAwareInputStream> getExtractor(WorkUnitState state) throws IOException {
 
-    List<CopyableFile> copyableFiles = deserializeCopyableFiles(state);
+    CopyableFile copyableFile = deserializeCopyableFile(state);
 
-    return new CloseableFsFileAwareInputStreamExtractor(getSourceFileSystem(state), copyableFiles.iterator());
+    return new CloseableFsFileAwareInputStreamExtractor(getSourceFileSystem(state), copyableFile);
   }
 
 }

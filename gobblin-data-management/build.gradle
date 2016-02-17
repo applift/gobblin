@@ -1,4 +1,4 @@
-// Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+// Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 // this file except in compliance with the License. You may obtain a copy of the
@@ -10,23 +10,15 @@
 
 apply plugin: 'java'
 
-repositories {
-  mavenCentral()
-  maven {
-    url "http://conjars.org/repo"
-  }
-  maven {
-    url "https://repository.cloudera.com/artifactory/cloudera-repos/"
-  }
-}
-
 dependencies {
   compile project(":gobblin-api")
   compile project(":gobblin-core")
+  compile project(":gobblin-hive-registration")
   compile project(":gobblin-metrics")
   compile project(":gobblin-utility")
 
   compile externalDependency.commonsLang
+  compile externalDependency.commonsLang3
   compile externalDependency.guava
   compile externalDependency.slf4j
   compile externalDependency.log4j

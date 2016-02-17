@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -19,7 +19,7 @@ import java.io.Closeable;
  * An interface for classes that implement some logic limiting on the occurrences of some events,
  * e.g., data record extraction using an {@link gobblin.source.extractor.Extractor}.
  *
- * @author ynli
+ * @author Yinan Li
  */
 public interface Limiter {
 

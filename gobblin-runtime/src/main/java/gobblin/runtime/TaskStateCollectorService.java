@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -32,6 +32,7 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.util.concurrent.AbstractScheduledService;
 
 import gobblin.configuration.ConfigurationKeys;
+import gobblin.metastore.FsStateStore;
 import gobblin.util.ParallelRunner;
 
 
@@ -41,7 +42,7 @@ import gobblin.util.ParallelRunner;
  * For each batch of {@link TaskState}s collected, it posts a {@link NewTaskCompletionEvent} to notify
  * parties that are interested in such events.
  *
- * @author ynli
+ * @author Yinan Li
  */
 public class TaskStateCollectorService extends AbstractScheduledService {
 
@@ -127,7 +128,8 @@ public class TaskStateCollectorService extends AbstractScheduledService {
     FileStatus[] fileStatuses = this.fs.listStatus(this.outputTaskStateDir, new PathFilter() {
       @Override
       public boolean accept(Path path) {
-        return path.getName().endsWith(AbstractJobLauncher.TASK_STATE_STORE_TABLE_SUFFIX);
+        return path.getName().endsWith(AbstractJobLauncher.TASK_STATE_STORE_TABLE_SUFFIX)
+            && !path.getName().startsWith(FsStateStore.TMP_FILE_PREFIX);
       }
     });
     if (fileStatuses == null || fileStatuses.length == 0) {
@@ -138,11 +140,13 @@ public class TaskStateCollectorService extends AbstractScheduledService {
     Queue<TaskState> taskStateQueue = Queues.newConcurrentLinkedQueue();
     try (ParallelRunner stateSerDeRunner = new ParallelRunner(stateSerDeRunnerThreads, this.fs)) {
       for (FileStatus status : fileStatuses) {
-        LOGGER.warn("Found output task state file " + status.getPath() + "TimeStamp: " + LocalDateTime.now());
+        LOGGER.info("Found output task state file " + status.getPath());
         // Deserialize the TaskState and delete the file
         stateSerDeRunner.deserializeFromSequenceFile(Text.class, TaskState.class, status.getPath(),
             taskStateQueue, true);
       }
+    } catch (IOException ioe) {
+      LOGGER.warn("Could not read all task state files.");
     }
 
     LOGGER.warn(String.format("Collected task state of %d completed tasks", taskStateQueue.size()));

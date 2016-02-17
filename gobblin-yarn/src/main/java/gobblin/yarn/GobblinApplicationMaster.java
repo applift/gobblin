@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -81,7 +81,6 @@ import com.typesafe.config.ConfigFactory;
 
 import gobblin.configuration.ConfigurationKeys;
 import gobblin.metrics.Tag;
-import gobblin.util.ClusterNameTags;
 import gobblin.util.ConfigUtils;
 import gobblin.yarn.event.ApplicationMasterShutdownRequest;
 import gobblin.yarn.event.DelegationTokenUpdatedEvent;
@@ -109,7 +108,7 @@ import gobblin.yarn.event.DelegationTokenUpdatedEvent;
  *   </ul>
  * </p>
  *
- * @author ynli
+ * @author Yinan Li
  */
 public class GobblinApplicationMaster extends GobblinYarnLogSource {
 
@@ -222,8 +221,8 @@ public class GobblinApplicationMaster extends GobblinYarnLogSource {
    */
   private List<? extends Tag<?>> getMetadataTags(String applicationName, String applicationId) {
     return Tag.fromMap(
-        new ImmutableMap.Builder<String, Object>().put(GobblinYarnEventNames.YARN_APPLICATION_NAME, applicationName)
-            .put(GobblinYarnEventNames.YARN_APPLICATION_ID, applicationId).build());
+        new ImmutableMap.Builder<String, Object>().put(GobblinYarnMetricTagNames.YARN_APPLICATION_NAME, applicationName)
+            .put(GobblinYarnMetricTagNames.YARN_APPLICATION_ID, applicationId).build());
   }
 
   /**

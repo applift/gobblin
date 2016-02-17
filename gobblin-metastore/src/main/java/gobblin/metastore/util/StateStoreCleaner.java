@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -16,9 +16,12 @@ import java.io.Closeable;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
@@ -32,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import com.google.common.io.Closer;
 import com.google.common.io.Files;
 
@@ -43,7 +47,7 @@ import gobblin.util.ExecutorsUtils;
  * A utility class for cleaning up old state store files created by {@link gobblin.metastore.FsStateStore}
  * based on a configured retention.
  *
- * @author ynli
+ * @author Yinan Li
  */
 public class StateStoreCleaner implements Closeable {
 
@@ -85,18 +89,31 @@ public class StateStoreCleaner implements Closeable {
 
   /**
    * Run the cleaner.
+   * @throws ExecutionException
    */
-  public void run() throws IOException {
+  public void run() throws IOException, ExecutionException {
     FileStatus[] stateStoreDirs = this.fs.listStatus(this.stateStoreRootDir);
     if (stateStoreDirs == null || stateStoreDirs.length == 0) {
       LOGGER.warn("The state store root directory does not exist or is empty");
       return;
     }
 
+    List<Future<?>> futures = Lists.newArrayList();
+
     for (FileStatus stateStoreDir : stateStoreDirs) {
-      this.cleanerRunnerExecutor.submit(
-          new CleanerRunner(this.fs, stateStoreDir.getPath(), this.retention, this.retentionTimeUnit));
+      futures.add(this.cleanerRunnerExecutor.submit(new CleanerRunner(this.fs, stateStoreDir.getPath(), this.retention,
+          this.retentionTimeUnit)));
     }
+
+    for (Future<?> future : futures) {
+      try {
+        future.get();
+      } catch (InterruptedException e) {
+        throw new ExecutionException("Thread interrupted", e);
+      }
+    }
+
+    ExecutorsUtils.shutdownExecutorService(cleanerRunnerExecutor, Optional.of(LOGGER), 60, TimeUnit.SECONDS);
   }
 
   @Override

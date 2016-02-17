@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -28,12 +28,12 @@ import gobblin.data.management.retention.version.finder.VersionFinder;
 
 
 /**
- * {@link gobblin.data.management.retention.dataset.DatasetBase} for tracking data.
+ * {@link CleanableDatasetBase} for tracking data.
  *
  * Uses a {@link gobblin.data.management.retention.version.finder.DateTimeDatasetVersionFinder} and a
  * {@link gobblin.data.management.retention.policy.TimeBasedRetentionPolicy}.
  */
-public class TrackingDataset extends DatasetBase<TimestampedDatasetVersion> {
+public class TrackingDataset extends CleanableDatasetBase<TimestampedDatasetVersion> {
 
   private final VersionFinder<TimestampedDatasetVersion> versionFinder;
   private final RetentionPolicy<TimestampedDatasetVersion> retentionPolicy;

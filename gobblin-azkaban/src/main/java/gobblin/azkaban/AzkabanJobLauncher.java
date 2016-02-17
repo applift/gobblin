@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -30,10 +30,10 @@ import com.google.common.io.Closer;
 
 import gobblin.configuration.ConfigurationKeys;
 import gobblin.metrics.Tag;
-import gobblin.runtime.EmailNotificationJobListener;
 import gobblin.runtime.JobLauncher;
 import gobblin.runtime.JobLauncherFactory;
-import gobblin.runtime.JobListener;
+import gobblin.runtime.listeners.EmailNotificationJobListener;
+import gobblin.runtime.listeners.JobListener;
 import gobblin.runtime.util.JobMetrics;
 import gobblin.util.TimeRangeChecker;
 
@@ -47,7 +47,7 @@ import gobblin.util.TimeRangeChecker;
  *   using {@link ConfigurationKeys#JOB_LAUNCHER_TYPE_KEY}.
  * </p>
  *
- * @author ynli
+ * @author Yinan Li
  */
 public class AzkabanJobLauncher extends AbstractJob {
 

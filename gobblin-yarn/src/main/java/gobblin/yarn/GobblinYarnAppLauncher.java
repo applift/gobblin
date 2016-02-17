@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -19,6 +19,7 @@ import java.nio.ByteBuffer;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -82,6 +83,7 @@ import com.google.common.util.concurrent.ServiceManager;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
+import gobblin.admin.AdminWebServer;
 import gobblin.configuration.ConfigurationKeys;
 import gobblin.rest.JobExecutionInfoServer;
 import gobblin.util.ConfigUtils;
@@ -125,7 +127,7 @@ import gobblin.yarn.event.GetApplicationReportFailureEvent;
  *   this count exceeds the maximum number allowed, it will initiate a shutdown.
  * </p>
  *
- * @author ynli
+ * @author Yinan Li
  */
 public class GobblinYarnAppLauncher {
 
@@ -270,7 +272,15 @@ public class GobblinYarnAppLauncher {
         YarnHelixUtils.getAppWorkDirPath(this.fs, this.applicationName, this.applicationId.get().toString())));
     if (config.getBoolean(ConfigurationKeys.JOB_EXECINFO_SERVER_ENABLED_KEY)) {
       LOGGER.info("Starting the job execution info server since it is enabled");
-      services.add(new JobExecutionInfoServer(ConfigUtils.configToProperties(config)));
+      Properties properties = ConfigUtils.configToProperties(config);
+      JobExecutionInfoServer executionInfoServer = new JobExecutionInfoServer(properties);
+      services.add(executionInfoServer);
+      if (config.getBoolean(ConfigurationKeys.ADMIN_SERVER_ENABLED_KEY)) {
+        LOGGER.info("Starting the admin UI server since it is enabled");
+        services.add(new AdminWebServer(properties, executionInfoServer.getServerUri()));
+      }
+    } else if (config.getBoolean(ConfigurationKeys.ADMIN_SERVER_ENABLED_KEY)) {
+      LOGGER.warn("NOT starting the admin UI because the job execution info server is NOT enabled");
     }
 
     this.serviceManager = Optional.of(new ServiceManager(services));
@@ -766,7 +776,9 @@ public class GobblinYarnAppLauncher {
         } catch (TimeoutException te) {
           LOGGER.error("Timeout in stopping the service manager", te);
         } finally {
-          gobblinYarnAppLauncher.sendEmailOnShutdown(Optional.<ApplicationReport>absent());
+          if (gobblinYarnAppLauncher.emailNotificationOnShutdown) {
+            gobblinYarnAppLauncher.sendEmailOnShutdown(Optional.<ApplicationReport>absent());
+          }
         }
       }
     });

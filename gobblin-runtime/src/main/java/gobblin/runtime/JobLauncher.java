@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -15,6 +15,8 @@ package gobblin.runtime;
 import java.io.Closeable;
 import javax.annotation.Nullable;
 
+import gobblin.runtime.listeners.JobListener;
+
 
 /**
  * An interface for classes that launch a Gobblin job.
@@ -24,7 +26,7 @@ import javax.annotation.Nullable;
  *   should only be used to launch a single job.
  * </p>
  *
- * @author ynli
+ * @author Yinan Li
  */
 public interface JobLauncher extends Closeable {
 

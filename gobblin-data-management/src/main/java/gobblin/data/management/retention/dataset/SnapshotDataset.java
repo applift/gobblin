@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -29,12 +29,12 @@ import gobblin.data.management.retention.version.finder.WatermarkDatasetVersionF
 
 
 /**
- * {@link gobblin.data.management.retention.dataset.DatasetBase} for snapshot datasets.
+ * {@link CleanableDatasetBase} for snapshot datasets.
  *
  * Uses a {@link gobblin.data.management.retention.version.finder.WatermarkDatasetVersionFinder} and a
  * {@link gobblin.data.management.retention.policy.NewestKRetentionPolicy}.
  */
-public class SnapshotDataset extends DatasetBase<DatasetVersion> {
+public class SnapshotDataset extends CleanableDatasetBase<DatasetVersion> {
 
   private final VersionFinder<StringDatasetVersion> versionFinder;
   private final RetentionPolicy<DatasetVersion> retentionPolicy;

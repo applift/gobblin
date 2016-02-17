@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -33,7 +33,7 @@ import gobblin.util.ExecutorsUtils;
  * An abstract implementation of {@link TaskStateTracker} that provides basic common functionality for
  * platform-specific implementations.
  *
- * @author ynli
+ * @author Yinan Li
  */
 public abstract class AbstractTaskStateTracker extends AbstractIdleService implements TaskStateTracker {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -64,7 +64,7 @@ import gobblin.util.HadoopUtils;
  * @param <K> key type expected by the {@link FileInputFormat}
  * @param <V> value type expected by the {@link FileInputFormat}
  *
- * @author ynli
+ * @author Yinan Li
  */
 public abstract class HadoopFileInputSource<S, D, K, V> extends AbstractSource<S, D> {
 

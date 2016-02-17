@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -15,12 +15,13 @@ package gobblin.yarn;
 /**
  * A central place for constants of {@link gobblin.metrics.MetricContext} tag names for Gobblin on Yarn.
  *
- * @author ynli
+ * @author Yinan Li
  */
 public class GobblinYarnMetricTagNames {
 
   public static final String YARN_APPLICATION_NAME = "yarn.application.name";
   public static final String YARN_APPLICATION_ID = "yarn.application.id";
+  public static final String YARN_APPLICATION_ATTEMPT_ID = "yarn.application.attempt.id";
   public static final String CONTAINER_ID = "yarn.container.id";
   public static final String HELIX_INSTANCE_NAME = "helix.instance.name";
 

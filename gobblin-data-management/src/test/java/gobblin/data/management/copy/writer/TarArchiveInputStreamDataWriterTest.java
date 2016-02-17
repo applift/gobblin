@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -77,8 +77,10 @@ public class TarArchiveInputStreamDataWriterTest {
         new Path("/"));
     CopySource.serializeCopyableDataset(state, metadata);
 
-    TarArchiveInputStreamDataWriter dataWriter = new TarArchiveInputStreamDataWriter(state, 1, 0);
     FileAwareInputStream fileAwareInputStream = getCompressedInputStream(filePath, newFileName);
+    CopySource.serializeCopyableFile(state, fileAwareInputStream.getFile());
+
+    TarArchiveInputStreamDataWriter dataWriter = new TarArchiveInputStreamDataWriter(state, 1, 0);
     dataWriter.write(fileAwareInputStream);
     dataWriter.commit();
 

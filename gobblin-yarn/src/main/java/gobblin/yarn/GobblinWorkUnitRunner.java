@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -105,7 +105,8 @@ import gobblin.yarn.event.DelegationTokenUpdatedEvent;
  *   If for some reason, the container exits or gets killed, the {@link GobblinApplicationMaster} will
  *   be notified for the completion of the container and will start a new container to replace this one.
  * </p>
- * @author ynli
+ *
+ * @author Yinan Li
  */
 public class GobblinWorkUnitRunner extends GobblinYarnLogSource {
 

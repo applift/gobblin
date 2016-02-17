@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -13,7 +13,6 @@
 package gobblin.publisher;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 
 import com.google.common.base.Preconditions;
 
@@ -61,10 +60,10 @@ public abstract class SingleTaskDataPublisher extends DataPublisher {
    * @param dataPublisherClass A concrete class that extends {@link SingleTaskDataPublisher}.
    * @param state A {@link State} used to instantiate the {@link SingleTaskDataPublisher}.
    * @return A {@link SingleTaskDataPublisher} instance.
+   * @throws ReflectiveOperationException 
    */
   public static SingleTaskDataPublisher getInstance(Class<? extends DataPublisher> dataPublisherClass, State state)
-      throws NoSuchMethodException, SecurityException, InstantiationException, IllegalAccessException,
-      IllegalArgumentException, InvocationTargetException {
+      throws ReflectiveOperationException {
     Preconditions.checkArgument(SingleTaskDataPublisher.class.isAssignableFrom(dataPublisherClass),
         String.format("Cannot instantiate %s since it does not extend %s", dataPublisherClass.getSimpleName(),
             SingleTaskDataPublisher.class.getSimpleName()));

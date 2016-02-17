@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -20,7 +20,7 @@ import java.io.IOException;
  * A type of {@link Limiter}s that do not support permit refills by returning a no-op
  * {@link Closeable} in {@link #acquirePermits(long)}.
  *
- * @author ynli
+ * @author Yinan Li
  */
 public abstract class NonRefillableLimiter implements Limiter {
 

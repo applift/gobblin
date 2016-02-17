@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -24,7 +24,7 @@ import com.google.common.collect.ImmutableSet;
  * A type of {@link com.codahale.metrics.MetricFilter}s that matches {@link com.codahale.metrics.Metric}s
  * of type {@link Taggable} that have some given {@link Tag}s.
  *
- * @author ynli
+ * @author Yinan Li
  */
 public class TagBasedMetricFilter implements MetricFilter {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -48,7 +48,7 @@ import gobblin.util.JobLauncherUtils;
  * An implementation of {@link gobblin.runtime.JobLauncher} for launching and running jobs
  * locally on a single node.
  *
- * @author ynli
+ * @author Yinan Li
  */
 public class LocalJobLauncher extends AbstractJobLauncher {
 
@@ -121,11 +121,9 @@ public class LocalJobLauncher extends AbstractJobLauncher {
         this.taskExecutor, this.countDownLatch);
 
     LOG.info(String.format("Waiting for submitted tasks of job %s to complete...", jobId));
-    while (this.countDownLatch.getCount() > 0) {
+    while (!this.countDownLatch.await(1, TimeUnit.MINUTES)) {
       LOG.info(String.format("%d out of %d tasks of job %s are running", this.countDownLatch.getCount(),
           workUnitsToRun.size(), jobId));
-
-      this.countDownLatch.await(1, TimeUnit.MINUTES);
     }
 
     workUnitsRunTimer.stop();

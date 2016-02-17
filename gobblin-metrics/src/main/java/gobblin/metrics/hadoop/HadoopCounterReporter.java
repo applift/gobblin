@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -26,7 +26,7 @@ import gobblin.metrics.MetricContext;
  * An implementation of {@link gobblin.metrics.reporter.ContextAwareScheduledReporter} that reports
  * applicable metrics as Hadoop counters using a {@link org.apache.hadoop.mapred.Reporter}.
  *
- * @author ynli
+ * @author Yinan Li
  */
 public class HadoopCounterReporter extends AbstractHadoopCounterReporter {
 

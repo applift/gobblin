@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -84,6 +84,7 @@ public class ConfigurationKeys {
   // Job launcher type
   public static final String JOB_LAUNCHER_TYPE_KEY = "launcher.type";
   public static final String JOB_SCHEDULE_KEY = "job.schedule";
+  public static final String JOB_LISTENERS_KEY = "job.listeners";
   // Directory where job lock files are stored
   public static final String JOB_LOCK_DIR_KEY = "job.lock.dir";
   //Directory that stores task staging data and task output data.
@@ -274,7 +275,14 @@ public class ConfigurationKeys {
    * Configuration properties for the data publisher.
    */
   public static final String DATA_PUBLISHER_PREFIX = "data.publisher";
+
+  /**
+   * @deprecated Use {@link #TASK_DATA_PUBLISHER_TYPE} and {@link #JOB_DATA_PUBLISHER_TYPE}.
+   */
+  @Deprecated
   public static final String DATA_PUBLISHER_TYPE = DATA_PUBLISHER_PREFIX + ".type";
+  public static final String JOB_DATA_PUBLISHER_TYPE = DATA_PUBLISHER_PREFIX + ".job.type";
+  public static final String TASK_DATA_PUBLISHER_TYPE = DATA_PUBLISHER_PREFIX + ".task.type";
   public static final String DEFAULT_DATA_PUBLISHER_TYPE = "gobblin.publisher.BaseDataPublisher";
   public static final String DATA_PUBLISHER_FILE_SYSTEM_URI = DATA_PUBLISHER_PREFIX + ".fs.uri";
   public static final String DATA_PUBLISHER_FINAL_DIR = DATA_PUBLISHER_PREFIX + ".final.dir";
@@ -285,6 +293,7 @@ public class ConfigurationKeys {
   public static final String DATA_PUBLISHER_PERMISSIONS = DATA_PUBLISHER_PREFIX + ".permissions";
   public static final String PUBLISH_DATA_AT_JOB_LEVEL = "publish.data.at.job.level";
   public static final boolean DEFAULT_PUBLISH_DATA_AT_JOB_LEVEL = true;
+  public static final String PUBLISHER_DIRS = DATA_PUBLISHER_PREFIX + ".output.dirs";
 
   /**
    * Configuration properties used by the extractor.
@@ -403,7 +412,6 @@ public class ConfigurationKeys {
   public static final String TASK_STATE_COLLECTOR_INTERVAL_SECONDS = "task.state.collector.interval.secs";
   public static final int DEFAULT_TASK_STATE_COLLECTOR_INTERVAL_SECONDS = 60;
 
-
   /**
    * Configuration properties for email settings.
    */
@@ -463,6 +471,15 @@ public class ConfigurationKeys {
   public static final String DEFAULT_REST_SERVER_PORT = "8080";
 
   /**
+   * Admin server configuration properties.
+   */
+  public static final String ADMIN_SERVER_ENABLED_KEY = "admin.server.enabled";
+  public static final String ADMIN_SERVER_HOST_KEY = "admin.server.host";
+  public static final String DEFAULT_ADMIN_SERVER_HOST = "localhost";
+  public static final String ADMIN_SERVER_PORT_KEY = "admin.server.port";
+  public static final String DEFAULT_ADMIN_SERVER_PORT = "8000";
+
+  /**
    * Kafka job configurations.
    */
   public static final String KAFKA_BROKERS = "kafka.brokers";
@@ -505,9 +522,16 @@ public class ConfigurationKeys {
   public static final String AZKABAN_EXECUTION_DAYS_LIST = "azkaban.execution.days.list";
 
   /**
+   * Hive registration properties
+   */
+  public static final String HIVE_REGISTRATION_POLICY = "hive.registration.policy";
+
+  /**
    * Other configuration properties.
    */
+  public static final String GOBBLIN_RUNTIME_DELIVERY_SEMANTICS = "gobblin.runtime.delivery.semantics";
   public static final Charset DEFAULT_CHARSET_ENCODING = Charsets.UTF_8;
   public static final String TEST_HARNESS_LAUNCHER_IMPL = "gobblin.testharness.launcher.impl";
   public static final int PERMISSION_PARSING_RADIX = 8;
+
 }

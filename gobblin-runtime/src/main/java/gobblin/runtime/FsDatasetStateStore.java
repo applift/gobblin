@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -51,7 +51,7 @@ import gobblin.metastore.FsStateStore;
  *   backward compatibility.
  * </p>
  *
- * @author ynli
+ * @author Yinan Li
  */
 public class FsDatasetStateStore extends FsStateStore<JobState.DatasetState> {
 
@@ -63,14 +63,17 @@ public class FsDatasetStateStore extends FsStateStore<JobState.DatasetState> {
 
   public FsDatasetStateStore(String fsUri, String storeRootDir) throws IOException {
     super(fsUri, storeRootDir, JobState.DatasetState.class);
+    this.useTmpFileForPut = false;
   }
 
   public FsDatasetStateStore(FileSystem fs, String storeRootDir) throws IOException {
     super(fs, storeRootDir, JobState.DatasetState.class);
+    this.useTmpFileForPut = false;
   }
 
   public FsDatasetStateStore(String storeUrl) throws IOException {
     super(storeUrl, JobState.DatasetState.class);
+    this.useTmpFileForPut = false;
   }
 
   @Override

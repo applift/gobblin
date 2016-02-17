@@ -1,4 +1,4 @@
-// Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+// Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 // this file except in compliance with the License. You may obtain a copy of the
@@ -11,15 +11,6 @@
 apply plugin: 'java'
 apply plugin: 'eclipse'
 
-repositories {
-  mavenCentral()
-  maven {
-    url "http://conjars.org/repo"
-  }
-  maven {
-    url "https://repository.cloudera.com/artifactory/cloudera-repos/"
-  }
-}
 
 dependencies {
   compile project(":gobblin-api")
@@ -68,7 +59,7 @@ jar {
   manifestClasspath = ". " + manifestClasspath
   manifest {
     attributes("Manifest-Version"       : "1.0",
-    "Main-Class"             : "gobblin.compaction.CompactionRunner",
+    "Main-Class"             : "gobblin.compaction.hive.CompactionRunner",
     "Class-Path"             : manifestClasspath
     )
   }
@@ -83,7 +74,7 @@ task createCompactionTar(type: Tar) {
   compression = Compression.GZIP
 
   into("gobblin-compaction_lib") { from configurations.runtime }
-  into(".") { from project.rootDir.path + "/build/gobblin-compaction/libs/gobblin-compaction.jar" }
+  into(".") { from "${project.rootDir}/build/${project.name}/libs/${project.name}-${project.version}.jar" }
   into(".") { from project.rootDir.path + "/conf/log4j-compaction.xml" rename ('log4j-compaction.xml', 'log4j.xml')}
 }
 

@@ -1,4 +1,4 @@
-// Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+// Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 // this file except in compliance with the License. You may obtain a copy of the
@@ -10,17 +10,19 @@
 
 apply plugin: 'java'
 
-repositories {
-  mavenCentral()
-  maven {
-    url "http://conjars.org/repo"
-  }
-  maven {
-    url "https://repository.cloudera.com/artifactory/cloudera-repos/"
+configurations {
+  compile {
+    if (rootProject.hasProperty('excludeHadoopDeps')) {
+      exclude group: "org.apache.hadoop"
+    }
+    if (rootProject.hasProperty('excludeHiveDeps')) {
+      exclude group: "org.apache.hive"
+    }
   }
 }
 
 dependencies {
+  compile project(':gobblin-admin')
   compile project(':gobblin-azkaban')
   compile project(':gobblin-api')
   compile project(':gobblin-core')
@@ -35,6 +37,8 @@ dependencies {
   compile project(":gobblin-rest-service:gobblin-rest-api")
   compile project(":gobblin-rest-service:gobblin-rest-client")
   compile project(":gobblin-rest-service:gobblin-rest-server")
+  compile project(":gobblin-config-management:gobblin-config-client")
+  compile project(":gobblin-config-management:gobblin-config-core")
   if (project.hasProperty('useHadoop2')) {
     compile project(':gobblin-yarn')
   }
@@ -46,7 +50,12 @@ task build(type: Tar, overwrite: true) {
   compression = Compression.GZIP
 
   into("conf") { from "../conf/" }
-  into("bin") { from "../bin/" }
+  into("bin") { 
+    from "../bin/" 
+    from project(':gobblin-utility').projectDir.path + '/src/main/bash/gobblin_password_encryptor.sh'
+    filter { String line -> line.replace("GOBBLIN_VERSION=@project.version@", 
+      "GOBBLIN_VERSION="+'"' + project.version + '"') }
+  }
   into("lib") {
     from configurations.runtime
   }
@@ -54,9 +63,8 @@ task build(type: Tar, overwrite: true) {
 
   doLast {
     copy {
-      from buildDir.path + '/distributions/gobblin-distribution.tar.gz'
+      from buildDir.path + '/distributions/' + baseName + '-' + project.version + '.tar.gz'
       into project.rootDir.path
-      rename ('gobblin-distribution.tar.gz', 'gobblin-dist.tar.gz')
     }
   }
 }

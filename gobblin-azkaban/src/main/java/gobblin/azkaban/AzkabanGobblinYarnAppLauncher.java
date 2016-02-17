@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -39,7 +39,7 @@ import gobblin.yarn.GobblinYarnAppLauncher;
  *   application on Yarn.
  * </p>
  *
- * @author ynli
+ * @author Yinan Li
  */
 @SuppressWarnings("unused")
 public class AzkabanGobblinYarnAppLauncher extends AbstractJob {

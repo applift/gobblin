@@ -11,17 +11,8 @@
 
 apply plugin: 'java'
 
-repositories {
-  mavenCentral()
-  maven {
-    url "http://conjars.org/repo"
-  }
-  maven {
-    url "https://repository.cloudera.com/artifactory/cloudera-repos/"
-  }
-}
-
 dependencies {
+  compile project(":gobblin-admin")
   compile project(":gobblin-api")
   compile project(":gobblin-core")
   compile project(":gobblin-metrics")

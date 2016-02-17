@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -12,6 +12,7 @@
 
 package gobblin.rest;
 
+import com.linkedin.restli.server.ResourceContext;
 import java.util.Map;
 import java.util.Set;
 import javax.inject.Inject;
@@ -33,7 +34,7 @@ import gobblin.metastore.JobHistoryStore;
 /**
  * A Rest.li resource for serving queries of Gobblin job executions.
  *
- * @author ynli
+ * @author Yinan Li
  */
 @RestLiCollection(name = "jobExecutions", namespace = "gobblin.rest")
 public class JobExecutionInfoResource extends ComplexKeyResourceTemplate<JobExecutionQuery, EmptyRecord, JobExecutionQueryResult> {
@@ -62,6 +63,10 @@ public class JobExecutionInfoResource extends ComplexKeyResourceTemplate<JobExec
 
     JobExecutionQueryResult result = new JobExecutionQueryResult();
     result.setJobExecutions(jobExecutionInfos);
+    ResourceContext rc = this.getContext();
+    rc.setResponseHeader("Access-Control-Allow-Origin", "*");
+    this.setContext(rc);
+
     return result;
   }
 
@@ -76,6 +81,9 @@ public class JobExecutionInfoResource extends ComplexKeyResourceTemplate<JobExec
         results.put(key, get(key));
       }
     }
+    ResourceContext rc = this.getContext();
+    rc.setResponseHeader("Access-Control-Allow-Origin", "*");
+    this.setContext(rc);
 
     return results;
   }

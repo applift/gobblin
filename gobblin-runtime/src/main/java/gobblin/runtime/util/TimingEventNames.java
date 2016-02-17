@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -22,9 +22,14 @@ public class TimingEventNames {
     public static final String FULL_JOB_EXECUTION = "FullJobExecutionTimer";
     public static final String WORK_UNITS_CREATION = "WorkUnitsCreationTimer";
     public static final String WORK_UNITS_PREPARATION = "WorkUnitsPreparationTimer";
+    public static final String JOB_PREPARE = "JobPrepareTimer";
+    public static final String JOB_START = "JobStartTimer";
     public static final String JOB_RUN = "JobRunTimer";
     public static final String JOB_COMMIT = "JobCommitTimer";
     public static final String JOB_CLEANUP = "JobCleanupTimer";
+    public static final String JOB_CANCEL = "JobCancelTimer";
+    public static final String JOB_COMPLETE = "JobCompleteTimer";
+    public static final String JOB_FAILED = "JobFailedTimer";
   }
 
   public static class RunJobTimings {

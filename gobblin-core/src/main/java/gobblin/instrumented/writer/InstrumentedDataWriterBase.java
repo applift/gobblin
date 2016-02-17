@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -46,7 +46,7 @@ import gobblin.writer.DataWriter;
 /**
  * Package-private implementation of instrumentation for {@link gobblin.writer.DataWriter}.
  *
- * @see {@link gobblin.instrumented.writer.InstrumentedDataWriter} for extensible class.
+ * @see gobblin.instrumented.writer.InstrumentedDataWriter for extensible class.
  */
 abstract class InstrumentedDataWriterBase<D> implements DataWriter<D>, Instrumentable, Closeable, FinalState {
 

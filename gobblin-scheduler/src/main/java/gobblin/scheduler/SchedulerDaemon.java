@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -18,7 +18,6 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationConverter;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.slf4j.Logger;
@@ -37,6 +36,7 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Service;
 import com.google.common.util.concurrent.ServiceManager;
 
+import gobblin.admin.AdminWebServer;
 import gobblin.configuration.ConfigurationKeys;
 import gobblin.rest.JobExecutionInfoServer;
 
@@ -44,7 +44,7 @@ import gobblin.rest.JobExecutionInfoServer;
 /**
  * A class that runs the {@link JobScheduler} in a daemon process for standalone deployment.
  *
- * @author ynli
+ * @author Yinan Li
  */
 public class SchedulerDaemon {
 
@@ -72,8 +72,18 @@ public class SchedulerDaemon {
     List<Service> services = Lists.<Service>newArrayList(new JobScheduler(properties));
     boolean jobExecInfoServerEnabled = Boolean
         .valueOf(properties.getProperty(ConfigurationKeys.JOB_EXECINFO_SERVER_ENABLED_KEY, Boolean.FALSE.toString()));
+    boolean adminUiServerEnabled = Boolean
+        .valueOf(properties.getProperty(ConfigurationKeys.ADMIN_SERVER_ENABLED_KEY, Boolean.FALSE.toString()));
     if (jobExecInfoServerEnabled) {
-      services.add(new JobExecutionInfoServer(properties));
+      LOG.info("Starting the job execution info server since it is enabled");
+      JobExecutionInfoServer executionInfoServer = new JobExecutionInfoServer(properties);
+      services.add(executionInfoServer);
+      if (adminUiServerEnabled) {
+        LOG.info("Starting the admin UI server since it is enabled");
+        services.add(new AdminWebServer(properties, executionInfoServer.getServerUri()));
+      }
+    }  else if (adminUiServerEnabled) {
+      LOG.warn("NOT starting the admin UI because the job execution info server is NOT enabled");
     }
     this.serviceManager = new ServiceManager(services);
   }

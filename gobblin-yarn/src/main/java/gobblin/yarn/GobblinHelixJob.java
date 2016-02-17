@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 LinkedIn Corp. All rights reserved.
+ * Copyright (C) 2014-2016 LinkedIn Corp. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -26,7 +26,7 @@ import org.quartz.JobExecutionException;
 
 import gobblin.metrics.Tag;
 import gobblin.runtime.JobLauncher;
-import gobblin.runtime.JobListener;
+import gobblin.runtime.listeners.JobListener;
 import gobblin.scheduler.JobScheduler;
 
 
@@ -34,7 +34,7 @@ import gobblin.scheduler.JobScheduler;
  * An implementation of a Quartz's {@link Job} that uses a {@link GobblinHelixJobLauncher}
  * to launch a Gobblin job.
  *
- * @author ynli
+ * @author Yinan Li
  */
 public class GobblinHelixJob implements Job {
 
