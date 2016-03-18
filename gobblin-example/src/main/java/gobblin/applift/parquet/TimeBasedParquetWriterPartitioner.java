@@ -21,7 +21,8 @@ public class TimeBasedParquetWriterPartitioner extends TimeBasedWriterPartitione
 
 	@Override
 	public long getRecordTimestamp(GenericRecord record) {
-		return System.currentTimeMillis();
+	   GenericRecord req_info = (GenericRecord) record.get("req_info");
+	   String timestamp = (String)req_info.get("unix_ts");
+	   return Long.parseLong(timestamp);
 	}
-
 }

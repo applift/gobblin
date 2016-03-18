@@ -23,6 +23,7 @@ dependencies {
   compile externalDependency.gson
   compile externalDependency.commonsVfs  
   compile externalDependency.commonsLang
+  compile externalDependency.commonsHttpClient
   compile externalDependency.commonsCodec
   compile externalDependency.parquetCommon
   compile externalDependency.parquetColumn

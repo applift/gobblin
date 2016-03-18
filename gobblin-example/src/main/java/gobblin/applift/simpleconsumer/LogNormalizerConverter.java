@@ -17,26 +17,27 @@ import gobblin.converter.SingleRecordIterable;
 
 public class LogNormalizerConverter extends Converter<Object, Object, String, String> {
 
-	private static final Logger LOG = LoggerFactory.getLogger(LogNormalizerConverter.class);
-	@Override
-	public Object convertSchema(Object inputSchema, WorkUnitState workUnit) throws SchemaConversionException {
-		return inputSchema;
-	}
+  private static final Logger LOG = LoggerFactory.getLogger(LogNormalizerConverter.class);
 
-	@Override
-	public Iterable<String> convertRecord(Object outputSchema, String inputRecord, WorkUnitState workUnit)
-	    throws DataConversionException {
-		if(inputRecord.contains("LOGROTATE"))
-  		return new SingleRecordIterable<String>(inputRecord);
-		String[] logRecords = inputRecord.split("\n");
-  	List<String> normalizedRecords = new ArrayList<String>();
-  	for(String logRecord:logRecords){
-  		normalizedRecords.add(normalizeString(logRecord));
-  	}
+  @Override
+  public Object convertSchema(Object inputSchema, WorkUnitState workUnit) throws SchemaConversionException {
+    return inputSchema;
+  }
+
+  @Override
+  public Iterable<String> convertRecord(Object outputSchema, String inputRecord, WorkUnitState workUnit)
+      throws DataConversionException {
+    if (inputRecord.contains("LOGROTATE"))
+      return new SingleRecordIterable<String>(inputRecord);
+    String[] logRecords = inputRecord.split("\n");
+    List<String> normalizedRecords = new ArrayList<String>();
+    for (String logRecord : logRecords) {
+      normalizedRecords.add(normalizeString(logRecord));
+    }
     return normalizedRecords;
-	}
-	
-	public static String normalizeString(String str) {
+  }
+
+  public static String normalizeString(String str) {
     if (str != null && !str.equals("") && str.contains("\\x")) {
       StringBuffer buff = new StringBuffer();
       int n = str.length();
