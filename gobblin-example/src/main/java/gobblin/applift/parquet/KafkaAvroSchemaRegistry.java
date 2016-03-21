@@ -4,13 +4,11 @@ import java.io.IOException;
 import java.util.Properties;
 
 import org.apache.avro.Schema;
-import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.httpclient.MultiThreadedHttpConnectionManager;
 import org.apache.commons.httpclient.methods.GetMethod;
-import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.commons.httpclient.methods.PutMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +33,7 @@ public class KafkaAvroSchemaRegistry {
     this.httpClient = new HttpClient(new MultiThreadedHttpConnectionManager());
   }
 
+  @SuppressWarnings("deprecation")
   public synchronized void register(Schema schema, String topicName) throws SchemaRegistryException {
     LOG.info("Registering schema " + schema.toString());
     String registerUrl = url + "/" + topicName + "/register";

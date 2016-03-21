@@ -31,7 +31,6 @@ public class ParquetHdfsDataWriterBuilder extends FsDataWriterBuilder<Schema, Ge
 		case HDFS:
 			State properties = this.destination.getProperties();
 			return new ParquetHdfsDataWriter(this, properties, this.schema);
-
 		default:
 			throw new RuntimeException("Unknown destination type: " + this.destination.getType());
 		}

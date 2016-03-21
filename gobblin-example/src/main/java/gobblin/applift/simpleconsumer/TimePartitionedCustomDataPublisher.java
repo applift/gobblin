@@ -119,13 +119,4 @@ public class TimePartitionedCustomDataPublisher extends BaseDataPublisher {
     }
     return this.parallelRunners.get(uri);
   }
-	
-	protected Path getPublisherOutputDir(WorkUnitState workUnitState, int branchId) {
-    Path outputPath = WriterUtils.getDataPublisherFinalDir(workUnitState, this.numBranches, branchId);
-    String[] directories = outputPath.getParent().toString().split("\\/");
-    String basepath = directories[0];
-    String topic = directories[2];
-    LOG.warn("Applift: OutputPath = "+ basepath+"/"+ topic);
-    return new Path(basepath+"/"+ topic);
-  }
 }

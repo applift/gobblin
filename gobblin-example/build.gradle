@@ -29,6 +29,8 @@ dependencies {
   compile externalDependency.parquetColumn
   compile externalDependency.parquetHadoop
   compile externalDependency.parquetAvro
+  compile externalDependency.jacksonCore
+  compile externalDependency.jacksonMapper
   compile externalDependency.kafka
   compile externalDependency.kafkaClient
   compile externalDependency.scala
