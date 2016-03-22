@@ -95,11 +95,10 @@ public class JsonToAvroConverter extends ToAvroConverterBase<Schema, String> {
       try {
         record = convert(mapper.readValue(normalizedLog, Map.class),schema);
         avroRecords.add(record);
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
+      } catch (Exception e) {
+        System.out.println("Applift: "+normalizedLog);
         e.printStackTrace();
       }
-      
     }
     return avroRecords;
   }
