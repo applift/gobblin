@@ -250,7 +250,7 @@ public class JsonToAvroConverter extends ToAvroConverterBase<Schema, String> {
       }
       return mapRes;
     default:
-      throw new IllegalArgumentException("JsonConverter cannot handle type: " + schema.getType());
+      throw new IllegalArgumentException("JsonToAvroConverter cannot handle type: " + schema.getType());
     }
     throw new JsonConversionException(value, name, schema);
   }
@@ -267,9 +267,6 @@ public class JsonToAvroConverter extends ToAvroConverterBase<Schema, String> {
   }
 
   private static class JsonConversionException extends RuntimeException {
-    /**
-     * 
-     */
     private static final long serialVersionUID = 257077172187L;
     private Object value;
     private String fieldName;
