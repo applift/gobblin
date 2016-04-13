@@ -36,6 +36,8 @@ import org.apache.avro.io.Encoder;
 import org.apache.avro.io.EncoderFactory;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -67,6 +69,7 @@ import gobblin.converter.ToAvroConverterBase;
  */
 @SuppressWarnings("unused")
 public class JsonToAvroConverter extends ToAvroConverterBase<Schema, String> {
+  private static final Logger LOG = LoggerFactory.getLogger(JsonToAvroConverter.class);
   private final ObjectMapper mapper = new ObjectMapper();
 
   @Override
@@ -97,6 +100,7 @@ public class JsonToAvroConverter extends ToAvroConverterBase<Schema, String> {
         avroRecords.add(record);
       } catch (Exception e) {
         e.printStackTrace();
+        LOG.warn("Applift: Faulty Record: "+normalizedLog);
       }
     }
     return avroRecords;

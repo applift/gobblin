@@ -32,6 +32,7 @@ public class ReqLogPolicy extends RowLevelPolicy {
       if (reqInfoObject == null || reqInfoObject.get("unix_ts") == null)
         return Result.FAILED;
     } catch (Exception e) {
+      e.printStackTrace();
       LOG.warn("Applift: Faulty record : " + logRecord);
       return Result.FAILED;
     }

@@ -4,10 +4,6 @@ import org.apache.avro.generic.GenericRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
 import gobblin.configuration.State;
 import gobblin.qualitychecker.row.RowLevelPolicy;
 
@@ -26,6 +22,7 @@ public class AvroReqLogPolicy extends RowLevelPolicy {
       if (reqInfoRecord == null || reqInfoRecord.get("unix_ts") == null)
         return Result.FAILED;
     } catch (Exception e) {
+      e.printStackTrace();
       LOG.warn("Applift: Faulty record : " + logRecord.toString());
       return Result.FAILED;
     }
