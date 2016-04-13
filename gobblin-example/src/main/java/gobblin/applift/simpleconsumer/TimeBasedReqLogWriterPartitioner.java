@@ -17,8 +17,8 @@ public class TimeBasedReqLogWriterPartitioner extends TimeBasedWriterPartitioner
 		JsonElement element = new JsonParser().parse(record);
 		JsonObject reqLogObject = element.getAsJsonObject();
 		JsonObject reqInfoObject = reqLogObject.getAsJsonObject("req_info");
-		float unixTS = Float.valueOf(reqInfoObject.get("unix_ts").toString());
-		long timestampMS = (long) (unixTS*1000);
+		Double unixTS = Double.valueOf(reqInfoObject.get("unix_ts").toString())*1000;
+		long timestampMS = unixTS.longValue();
 		return timestampMS;
 	}
 }
