@@ -12,8 +12,8 @@ public class TimeBasedConversionLogWriterPartitioner extends TimeBasedWriterPart
 	@Override
 	public long getRecordTimestamp(String record) {
 		String[] columns = record.split("\\|");
-		float unixTS = Float.valueOf(columns[1]);
-		long timestampMS = (long) (unixTS * 1000);
+		Double unixTS = Double.valueOf(columns[1])*1000;
+		long timestampMS = unixTS.longValue();
 		return timestampMS;
 	}
 

@@ -11,8 +11,8 @@ public class TimeBasedWinLogWriterPartitioner extends TimeBasedWriterPartitioner
 	@Override
 	public long getRecordTimestamp(String record) {
 		String[] columns = record.split("\\|");
-		float unixTS = Float.valueOf(columns[38]);
-		long timestampMS = (long) (unixTS*1000);
+		Double unixTS = Double.valueOf(columns[38])*1000;
+		long timestampMS = unixTS.longValue();
 		return timestampMS;
 	}
 }

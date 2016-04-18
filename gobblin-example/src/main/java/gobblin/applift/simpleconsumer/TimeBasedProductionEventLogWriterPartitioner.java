@@ -18,8 +18,8 @@ public class TimeBasedProductionEventLogWriterPartitioner extends TimeBasedWrite
 	public long getRecordTimestamp(String record) {
 		JsonElement element = new JsonParser().parse(record);
 		JsonObject productionEventObject = element.getAsJsonObject();
-		float unixTS = Float.valueOf(productionEventObject.get("timestamp").toString());
-		long timestampMS = (long) (unixTS*1000);
+		Double unixTS = Double.valueOf(productionEventObject.get("timestamp").toString())*1000;
+		long timestampMS = unixTS.longValue();
 		return timestampMS;
 	}
 }
