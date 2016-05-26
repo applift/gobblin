@@ -268,6 +268,7 @@ public class GobblinYarnAppLauncher {
       services.add(buildYarnAppSecurityManager());
     }
     services.add(buildLogCopier(
+        this.config,
         new Path(this.sinkLogRootDir, this.applicationName + Path.SEPARATOR + this.applicationId.get().toString()),
         YarnHelixUtils.getAppWorkDirPath(this.fs, this.applicationName, this.applicationId.get().toString())));
     if (config.getBoolean(ConfigurationKeys.JOB_EXECINFO_SERVER_ENABLED_KEY)) {
@@ -277,7 +278,7 @@ public class GobblinYarnAppLauncher {
       services.add(executionInfoServer);
       if (config.getBoolean(ConfigurationKeys.ADMIN_SERVER_ENABLED_KEY)) {
         LOGGER.info("Starting the admin UI server since it is enabled");
-        services.add(new AdminWebServer(properties, executionInfoServer.getServerUri()));
+        services.add(new AdminWebServer(properties, executionInfoServer.getAdvertisedServerUri()));
       }
     } else if (config.getBoolean(ConfigurationKeys.ADMIN_SERVER_ENABLED_KEY)) {
       LOGGER.warn("NOT starting the admin UI because the job execution info server is NOT enabled");
@@ -329,7 +330,6 @@ public class GobblinYarnAppLauncher {
   }
 
   @Subscribe
-  @SuppressWarnings("unused")
   public void handleApplicationReportArrivalEvent(ApplicationReportArrivalEvent applicationReportArrivalEvent) {
     ApplicationReport applicationReport = applicationReportArrivalEvent.getApplicationReport();
 
@@ -666,17 +666,23 @@ public class GobblinYarnAppLauncher {
     }
   }
 
-  private LogCopier buildLogCopier(Path sinkLogDir, Path appWorkDir) throws IOException {
+  private LogCopier buildLogCopier(Config config, Path sinkLogDir, Path appWorkDir) throws IOException {
     FileSystem rawLocalFs = this.closer.register(new RawLocalFileSystem());
     rawLocalFs.initialize(URI.create(ConfigurationKeys.LOCAL_FS_URI), new Configuration());
 
-    return LogCopier.newBuilder()
-        .useSrcFileSystem(this.fs)
-        .useDestFileSystem(rawLocalFs)
-        .readFrom(getHdfsLogDir(appWorkDir))
-        .writeTo(sinkLogDir)
-        .acceptsLogFileExtensions(ImmutableSet.of(ApplicationConstants.STDOUT, ApplicationConstants.STDERR))
-        .build();
+    LogCopier.Builder builder = LogCopier.newBuilder()
+            .useSrcFileSystem(this.fs)
+            .useDestFileSystem(rawLocalFs)
+            .readFrom(getHdfsLogDir(appWorkDir))
+            .writeTo(sinkLogDir)
+            .acceptsLogFileExtensions(ImmutableSet.of(ApplicationConstants.STDOUT, ApplicationConstants.STDERR));
+    if (config.hasPath(GobblinYarnConfigurationKeys.LOG_COPIER_MAX_FILE_SIZE)) {
+      builder.useMaxBytesPerLogFile(config.getBytes(GobblinYarnConfigurationKeys.LOG_COPIER_MAX_FILE_SIZE));
+    }
+    if (config.hasPath(GobblinYarnConfigurationKeys.LOG_COPIER_SCHEDULER)) {
+      builder.useScheduler(config.getString(GobblinYarnConfigurationKeys.LOG_COPIER_SCHEDULER));
+    }
+    return builder.build();
   }
 
   private Path getHdfsLogDir(Path appWorkDir) throws IOException {

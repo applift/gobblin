@@ -17,6 +17,7 @@ import gobblin.configuration.SourceState;
 import gobblin.data.management.dataset.DatasetUtils;
 import gobblin.source.workunit.Extract;
 import gobblin.source.workunit.WorkUnit;
+import gobblin.util.JobLauncherUtils;
 
 import java.util.List;
 
@@ -39,15 +40,16 @@ public class CopySourceTest {
     CopySource source = new CopySource();
 
     List<WorkUnit> workunits = source.getWorkunits(state);
+    workunits = JobLauncherUtils.flattenWorkUnits(workunits);
 
     Assert.assertEquals(workunits.size(), TestCopyableDataset.FILE_COUNT);
 
     Extract extract = workunits.get(0).getExtract();
 
     for (WorkUnit workUnit : workunits) {
-      CopyableFile copyableFile = CopySource.deserializeCopyableFile(workUnit);
-      Assert.assertTrue(copyableFile.getOrigin().getPath().toString().startsWith(TestCopyableDataset.ORIGIN_PREFIX));
-      Assert.assertEquals(copyableFile.getDestinationOwnerAndPermission(), TestCopyableDataset.OWNER_AND_PERMISSION);
+      CopyableFile file = (CopyableFile) CopySource.deserializeCopyEntity(workUnit);
+      Assert.assertTrue(file.getOrigin().getPath().toString().startsWith(TestCopyableDataset.ORIGIN_PREFIX));
+      Assert.assertEquals(file.getDestinationOwnerAndPermission(), TestCopyableDataset.OWNER_AND_PERMISSION);
       Assert.assertEquals(workUnit.getExtract(), extract);
     }
 
@@ -67,6 +69,7 @@ public class CopySourceTest {
     CopySource source = new CopySource();
 
     List<WorkUnit> workunits = source.getWorkunits(state);
+    workunits = JobLauncherUtils.flattenWorkUnits(workunits);
 
     Assert.assertEquals(workunits.size(), TestCopyableDataset.FILE_COUNT);
 
@@ -74,7 +77,7 @@ public class CopySourceTest {
     Extract extractBelow = null;
 
     for (WorkUnit workUnit : workunits) {
-      CopyableFile copyableFile = CopySource.deserializeCopyableFile(workUnit);
+      CopyableFile copyableFile = (CopyableFile) CopySource.deserializeCopyEntity(workUnit);
       Assert.assertTrue(copyableFile.getOrigin().getPath().toString().startsWith(TestCopyableDataset.ORIGIN_PREFIX));
       Assert.assertEquals(copyableFile.getDestinationOwnerAndPermission(), TestCopyableDataset.OWNER_AND_PERMISSION);
 

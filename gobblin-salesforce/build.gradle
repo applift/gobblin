@@ -18,6 +18,7 @@ dependencies {
 
     compile externalDependency.guava
     compile externalDependency.gson
+    compile externalDependency.lombok
     compile externalDependency.slf4j
     compile externalDependency.jodaTime
     compile externalDependency.jacksonCore
@@ -39,9 +40,6 @@ configurations {
 }
 
 test {
-    useTestNG () {
-      excludeGroups 'ignore'
-    }
     workingDir rootProject.rootDir
 }
 

@@ -30,8 +30,6 @@ import gobblin.util.WriterUtils;
  * where partition path is the time bucket, e.g., 2015/04/08/15.
  *
  * Publisher output directory is $GOBBLIN_WORK_DIR/job-output/{tableName}/{partitionPath}
- *
- * @author ziliu
  */
 public class TimePartitionedDataPublisher extends BaseDataPublisher {
 
@@ -62,7 +60,7 @@ public class TimePartitionedDataPublisher extends BaseDataPublisher {
       WriterUtils.mkdirsWithRecursivePermission(this.publisherFileSystemByBranches.get(branchId), outputPath.getParent(),
           this.permissions.get(branchId));
 
-      movePath(parallelRunner, status.getPath(), outputPath, branchId);
+      movePath(parallelRunner, workUnitState, status.getPath(), outputPath, branchId);
     }
   }
 }
