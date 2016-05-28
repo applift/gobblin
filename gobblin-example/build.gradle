@@ -10,22 +10,6 @@
 
 apply plugin: 'java'
 
-<<<<<<< HEAD
-=======
-dependencies {
-    compile project(":gobblin-api")
-    compile project(":gobblin-core")
-    compile project(":gobblin-runtime")
-    compile project(":gobblin-data-management")
-
-    compile externalDependency.avro
-    compile externalDependency.guava
-    compile externalDependency.jacksonCore
-    compile externalDependency.slf4j
-    compile externalDependency.gson
-    compile externalDependency.commonsVfs
-    compile externalDependency.avroMapredH2
->>>>>>> upstream/master
 
 dependencies {
   compile project(":gobblin-api")
@@ -50,11 +34,8 @@ dependencies {
   compile externalDependency.kafka
   compile externalDependency.kafkaClient
   compile externalDependency.scala
-  if (project.hasProperty('useHadoop2')) {
-    compile externalDependency.avroMapredH2
-  } else {
-    compile externalDependency.avroMapredH1
-  }
+  compile externalDependency.avroMapredH2
+  compile externalDependency.findBugsAnnotations
   testCompile externalDependency.testng
 }
 
@@ -65,12 +46,8 @@ configurations {
 }
 
 test {
-<<<<<<< HEAD
   useTestNG ()
   include '**/*Test*'
-=======
-    include '**/*Test*'
->>>>>>> upstream/master
 }
 
 ext.classification="library"
