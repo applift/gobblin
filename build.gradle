@@ -191,6 +191,8 @@ ext.externalDependency = [
   "parquetCommon": "org.apache.parquet:parquet-common:1.8.1",
   "parquetHadoop": "org.apache.parquet:parquet-hadoop:1.8.1",
   "parquetAvro": "org.apache.parquet:parquet-avro:1.8.1",
+  "twitterBijectionCore": "com.twitter:bijection-core_2.10:0.9.2",
+  "twitterBijectionAvro": "com.twitter:bijection-avro_2.10:0.9.2",
   "slf4jLog4j": "org.slf4j:slf4j-log4j12:1.7.12",
   "jodaTime": "joda-time:joda-time:2.9.3",
   "metricsCore": "io.dropwizard.metrics:metrics-core:" + dropwizardMetricsVersion,
