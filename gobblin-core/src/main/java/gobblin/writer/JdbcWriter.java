@@ -38,7 +38,7 @@ import com.google.common.base.Preconditions;
  * Uses JDBC to persist data in task level.
  * For interaction with JDBC underlying RDBMS, it uses JdbcWriterCommands.
  *
- * JdbcWriter will open single transaction for it’s simplicity on failure handling.
+ * JdbcWriter will open single transaction for it's simplicity on failure handling.
  *
  * Scalability issue may come with long transaction can be overcome by increasing partition which will make transaction short.
  * (Data with 200M record was tested with single transaction and it had no problem in MySQL 5.6.)
@@ -47,13 +47,13 @@ import com.google.common.base.Preconditions;
  *   Pro: Simple on failure handling as you can just simply execute rollback on failure. Basically, it will revert back to previous state so that the job can retry the task.
  *   Con: It can lead up to long lived transaction and it can face scalability issue. (Not enough disk space for transaction log, number of record limit on one transaction (200M for Postgre sql), etc)
  *
- * During the design meeting, we’ve discussed that long transaction could be a problem. One suggestion came out during the meeting was commit periodically.
+ * During the design meeting, we've discussed that long transaction could be a problem. One suggestion came out during the meeting was commit periodically.
  * This will address long transaction problem, but we also discussed it would be hard on failure handling.
- * Currently, Gobblin does task level retry on failure and there were three options we’ve discussed.
+ * Currently, Gobblin does task level retry on failure and there were three options we've discussed.
  * (There was no silver bullet solution from the meeting.) Note that these are all with committing periodically.
  * Revert to previous state: For writer, this will be delete the record it wrote.
- *     For JdbcWriter, it could use it’s own staging table or could share staging table with other writer.
- *     As staging table can be passed by user where we don’t have control of, not able to add partition information, it is hard to revert back to previous state for all cases.
+ *     For JdbcWriter, it could use it's own staging table or could share staging table with other writer.
+ *     As staging table can be passed by user where we don't have control of, not able to add partition information, it is hard to revert back to previous state for all cases.
  * Ignore duplicate: The idea is to use Upsert to perform insert or update.
  *     As it needs to check the current existence in the dataset, it is expected to show performance degradation.
  *     Also, possibility of duplicate entry was also discussed.
