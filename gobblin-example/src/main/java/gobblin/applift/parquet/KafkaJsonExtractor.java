@@ -71,7 +71,7 @@ public class KafkaJsonExtractor extends KafkaExtractor<Schema, String> {
    */
 
   protected static String getJsonString(ByteBuffer buf) {
-    byte[] bytes = null;
+    byte[] bytes = new byte[0];
     if (buf != null) {
       int size = buf.remaining();
       bytes = new byte[size];

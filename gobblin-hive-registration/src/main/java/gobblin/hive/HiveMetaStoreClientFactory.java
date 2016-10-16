@@ -12,6 +12,8 @@
 
 package gobblin.hive;
 
+import lombok.Getter;
+
 import org.apache.commons.pool2.BasePooledObjectFactory;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
@@ -20,18 +22,41 @@ import org.apache.hadoop.hive.metastore.HiveMetaStoreClient;
 import org.apache.hadoop.hive.metastore.IMetaStoreClient;
 import org.apache.hadoop.hive.metastore.api.MetaException;
 
+import com.google.common.base.Optional;
+
 
 /**
- * An implementation of {@link BasePoolableObjectFactory} for {@link IMetaStoreClient}.
- *
- * @author ziliu
+ * An implementation of {@link BasePooledObjectFactory} for {@link IMetaStoreClient}.
  */
 public class HiveMetaStoreClientFactory extends BasePooledObjectFactory<IMetaStoreClient> {
+
+  @Getter
+  private HiveConf hiveConf;
+
+  public HiveMetaStoreClientFactory(Optional<String> hcatURI) {
+    this(getHiveConf(hcatURI));
+  }
+
+  private static HiveConf getHiveConf(Optional<String> hcatURI) {
+    HiveConf hiveConf = new HiveConf();
+    if (hcatURI.isPresent()) {
+      hiveConf.setVar(HiveConf.ConfVars.METASTOREURIS, hcatURI.get());
+    }
+    return hiveConf;
+  }
+
+  public HiveMetaStoreClientFactory(HiveConf hiveConf) {
+    this.hiveConf = hiveConf;
+  }
+
+  public HiveMetaStoreClientFactory() {
+    this(Optional.<String> absent());
+  }
 
   @Override
   public IMetaStoreClient create() {
     try {
-      return new HiveMetaStoreClient(new HiveConf());
+      return new HiveMetaStoreClient(this.hiveConf);
     } catch (MetaException e) {
       throw new RuntimeException("Unable to create " + IMetaStoreClient.class.getSimpleName(), e);
     }

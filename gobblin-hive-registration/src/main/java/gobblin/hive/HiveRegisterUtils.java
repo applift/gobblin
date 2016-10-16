@@ -19,12 +19,16 @@ import org.apache.hadoop.fs.Path;
 import gobblin.configuration.State;
 import gobblin.hive.policy.HiveRegistrationPolicy;
 import gobblin.hive.policy.HiveRegistrationPolicyBase;
+import gobblin.hive.spec.HiveSpec;
 
 
 /**
  * Utility class for registering data into Hive.
  */
 public class HiveRegisterUtils {
+
+  private HiveRegisterUtils() {
+  }
 
   /**
    * Register the given {@link Path}s.
@@ -34,10 +38,12 @@ public class HiveRegisterUtils {
    * {@link HiveRegistrationPolicy} for registering the given The {@link Path}s.
    */
   public static void register(Iterable<String> paths, State state) throws IOException {
-    try (HiveRegister hiveRegister = new HiveRegister(state)) {
+    try (HiveRegister hiveRegister = HiveRegister.get(state)) {
       HiveRegistrationPolicy policy = HiveRegistrationPolicyBase.getPolicy(state);
       for (String path : paths) {
-        hiveRegister.register(policy.getHiveSpec(new Path(path)));
+        for (HiveSpec spec : policy.getHiveSpecs(new Path(path))) {
+          hiveRegister.register(spec);
+        }
       }
     }
   }

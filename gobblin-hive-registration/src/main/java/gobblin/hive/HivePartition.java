@@ -14,47 +14,55 @@ package gobblin.hive;
 
 import java.util.List;
 
-import org.apache.hadoop.hive.metastore.api.FieldSchema;
-
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 
 import gobblin.annotation.Alpha;
 import lombok.Getter;
 
 
 /**
- * Representation of a Hive partition.
+ * A class that represents a Hive partition.
  *
- * @author ziliu
+ * <p>
+ *   This class is used in {@link gobblin.hive.spec.HiveSpec} instead of Hive's
+ *   {@link org.apache.hadoop.hive.metastore.api.Partition} class to minimize the dependency on the hive-metastore API
+ *   (since it is unstable and may go through backward incompatible changes). {@link HivePartition} and Hive's
+ *   {@link org.apache.hadoop.hive.metastore.api.Partition} can be converted to each other using
+ *   {@link gobblin.hive.metastore.HiveMetaStoreUtils}.
+ * </p>
+ *
+ * @author Ziyang Liu
  */
 @Getter
 @Alpha
-public class HivePartition {
+public class HivePartition extends HiveRegistrationUnit {
 
-  private final List<FieldSchema> keys;
   private final List<String> values;
 
-  public HivePartition(List<FieldSchema> keys, List<String> values) {
-    Preconditions.checkNotNull(keys);
-    Preconditions.checkNotNull(values);
-    Preconditions.checkArgument(keys.size() >= 1 && keys.size() == values.size());
-    this.keys = ImmutableList.copyOf(keys);
-    this.values = ImmutableList.copyOf(values);
+  private HivePartition(Builder builder) {
+    super(builder);
+    this.values = ImmutableList.<String> copyOf(builder.values);
   }
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < keys.size(); i++) {
-      if (i != 0) {
-        sb.append(", ");
-      }
-      sb.append(keys.get(i).getName());
-      sb.append("=");
-      sb.append(values.get(i));
-    }
-    return sb.toString();
+    return this.values.toString();
   }
 
+  public static class Builder extends HiveRegistrationUnit.Builder<Builder> {
+
+    private List<String> values = Lists.newArrayList();
+
+    public Builder withPartitionValues(List<String> values) {
+      this.values = values;
+      return this;
+    }
+
+    @Override
+    public HivePartition build() {
+      return new HivePartition(this);
+    }
+
+  }
 }

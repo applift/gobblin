@@ -29,16 +29,15 @@ dependencies {
   compile externalDependency.parquetColumn
   compile externalDependency.parquetHadoop
   compile externalDependency.parquetAvro
+  compile externalDependency.twitterBijectionCore
+  compile externalDependency.twitterBijectionAvro
   compile externalDependency.jacksonCore
   compile externalDependency.jacksonMapper
   compile externalDependency.kafka
   compile externalDependency.kafkaClient
   compile externalDependency.scala
-  if (project.hasProperty('useHadoop2')) {
-    compile externalDependency.avroMapredH2
-  } else {
-    compile externalDependency.avroMapredH1
-  }
+  compile externalDependency.avroMapredH2
+  compile externalDependency.findBugsAnnotations
   testCompile externalDependency.testng
 }
 

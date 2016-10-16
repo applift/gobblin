@@ -187,7 +187,7 @@ public class JsonToAvroConverter extends ToAvroConverterBase<Schema, String> {
       }
     } else if (value == null) {
       // Always fail on null for non-nullable schemas
-      throw new JsonConversionException(value, name, schema);
+      throw new JsonConversionException(null, name, schema);
     }
 
     switch (schema.getType()) {
