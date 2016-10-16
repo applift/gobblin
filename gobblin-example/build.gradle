@@ -10,31 +10,26 @@
 
 apply plugin: 'java'
 
-dependencies {
-    compile project(":gobblin-api")
-    compile project(":gobblin-core")
-    compile project(":gobblin-runtime")
-    compile project(":gobblin-data-management")
-    runtime project(":gobblin-kafka")
-
-    compile externalDependency.avro
-    compile externalDependency.commonsLang3
-    compile externalDependency.guava
-    compile externalDependency.jacksonCore
-    compile externalDependency.slf4j
-    compile externalDependency.gson
-    compile externalDependency.commonsVfs
-    compile externalDependency.avroMapredH2
-    compile externalDependency.lombok
-    compile externalDependency.jodaTime
-    compile externalDependency.httpcore
-    compile externalDependency.httpclient
-
-dependencies {
+dependencies {    
+  compile externalDependency.avro
+  compile externalDependency.commonsLang3
+  compile externalDependency.guava
+  compile externalDependency.jacksonCore
+  compile externalDependency.slf4j
+  compile externalDependency.gson
+  compile externalDependency.commonsVfs
+  compile externalDependency.avroMapredH2
+  compile externalDependency.lombok
+  compile externalDependency.jodaTime
+  compile externalDependency.httpcore
+  compile externalDependency.httpclient
   compile project(":gobblin-api")
   compile project(":gobblin-core")
   compile project(":gobblin-metrics")
   compile project(":gobblin-utility")
+  compile project(":gobblin-runtime")
+  compile project(":gobblin-data-management")
+  runtime project(":gobblin-kafka")
   compile externalDependency.avro
   compile externalDependency.guava
   compile externalDependency.jacksonCore
