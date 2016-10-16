@@ -19,6 +19,7 @@ import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
 
 import gobblin.data.management.copy.hive.HiveCopyEntityHelper;
+import gobblin.data.management.copy.hive.HivePartitionFileSet;
 import gobblin.util.PathUtils;
 
 import javax.annotation.Nullable;
@@ -33,12 +34,12 @@ import lombok.extern.slf4j.Slf4j;
  */
 @AllArgsConstructor
 @Slf4j
-public class RootDirectoryModtimeSkipPredicate implements Predicate<HiveCopyEntityHelper.PartitionCopy> {
+public class RootDirectoryModtimeSkipPredicate implements Predicate<HivePartitionFileSet> {
 
   private final HiveCopyEntityHelper helper;
 
   @Override
-  public boolean apply(@Nullable HiveCopyEntityHelper.PartitionCopy input) {
+  public boolean apply(@Nullable HivePartitionFileSet input) {
 
     if (input == null) {
       return true;
@@ -56,7 +57,7 @@ public class RootDirectoryModtimeSkipPredicate implements Predicate<HiveCopyEnti
         return false;
       }
 
-      Path targetPath = this.helper.getTargetFileSystem().makeQualified(this.helper.getTargetPath(
+      Path targetPath = this.helper.getTargetFileSystem().makeQualified(this.helper.getTargetPathHelper().getTargetPath(
           input.getPartition().getDataLocation(), this.helper.getTargetFs(), Optional.of(input.getPartition()), false));
 
       Optional<FileStatus> targetFileStatus =

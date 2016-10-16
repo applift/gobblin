@@ -56,7 +56,7 @@ public class CopyEntity implements HasGuid {
   private String fileSet;
   /** Contains arbitrary metadata usable by converters and/or publisher. */
   @Singular(value = "metadata")
-  private Map<String, Object> additionalMetadata;
+  private Map<String, String> additionalMetadata;
 
   @Override
   public Guid guid() throws IOException {
@@ -137,8 +137,9 @@ public class CopyEntity implements HasGuid {
     /**
      * @return a unique string identifier for this {@link DatasetAndPartition}.
      */
+    @SuppressWarnings("deprecation")
     public String identifier() {
-      return Hex.encodeHexString(DigestUtils.sha1(this.dataset.toString() + this.partition));
+      return Hex.encodeHexString(DigestUtils.sha(this.dataset.toString() + this.partition));
     }
   }
 }

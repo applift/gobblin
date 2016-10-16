@@ -31,9 +31,12 @@ import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.net.HostAndPort;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 
 import gobblin.configuration.ConfigurationKeys;
 import gobblin.configuration.State;
+import gobblin.util.ConfigUtils;
 import gobblin.util.DatasetFilterUtils;
 import kafka.api.PartitionFetchInfo;
 import kafka.api.PartitionOffsetRequestInfo;
@@ -71,6 +74,7 @@ public class KafkaWrapper implements Closeable {
   private static class Builder {
     private boolean useNewKafkaAPI = DEFAULT_USE_NEW_KAFKA_API;
     private List<String> brokers = Lists.newArrayList();
+    private Config config = ConfigFactory.empty();
 
     private Builder withNewKafkaAPI() {
       this.useNewKafkaAPI = true;
@@ -86,6 +90,11 @@ public class KafkaWrapper implements Closeable {
       return this;
     }
 
+    private Builder withConfig(Config config) {
+      this.config = config;
+      return this;
+    }
+
     private KafkaWrapper build() {
       Preconditions.checkArgument(!this.brokers.isEmpty(), "Need to specify at least one Kafka broker.");
       return new KafkaWrapper(this);
@@ -95,7 +104,7 @@ public class KafkaWrapper implements Closeable {
   private KafkaWrapper(Builder builder) {
     this.useNewKafkaAPI = builder.useNewKafkaAPI;
     this.brokers = builder.brokers;
-    this.kafkaAPI = getKafkaAPI();
+    this.kafkaAPI = getKafkaAPI(builder.config);
   }
 
   /**
@@ -112,7 +121,10 @@ public class KafkaWrapper implements Closeable {
     if (state.getPropAsBoolean(USE_NEW_KAFKA_API, DEFAULT_USE_NEW_KAFKA_API)) {
       builder = builder.withNewKafkaAPI();
     }
-    return builder.withBrokers(state.getPropAsList(ConfigurationKeys.KAFKA_BROKERS)).build();
+    Config config = ConfigUtils.propertiesToConfig(state.getProperties());
+    return builder.withBrokers(state.getPropAsList(ConfigurationKeys.KAFKA_BROKERS))
+        .withConfig(config)
+        .build();
   }
 
   public List<String> getBrokers() {
@@ -135,11 +147,11 @@ public class KafkaWrapper implements Closeable {
     return this.kafkaAPI.fetchNextMessageBuffer(partition, nextOffset, maxOffset);
   }
 
-  private KafkaAPI getKafkaAPI() {
+  private KafkaAPI getKafkaAPI(Config config) {
     if (this.useNewKafkaAPI) {
-      return new KafkaNewAPI();
+      return new KafkaNewAPI(config);
     }
-    return new KafkaOldAPI();
+    return new KafkaOldAPI(config);
   }
 
   @Override
@@ -148,6 +160,10 @@ public class KafkaWrapper implements Closeable {
   }
 
   private abstract class KafkaAPI implements Closeable {
+
+    protected KafkaAPI(Config config) {
+    }
+
     protected abstract List<KafkaTopic> getFilteredTopics(List<Pattern> blacklist, List<Pattern> whitelist);
 
     protected abstract long getEarliestOffset(KafkaPartition partition) throws KafkaOffsetRetrievalFailureException;
@@ -162,281 +178,42 @@ public class KafkaWrapper implements Closeable {
    * Wrapper for the old low-level Scala-based Kafka API.
    */
   private class KafkaOldAPI extends KafkaAPI {
-    private static final int DEFAULT_KAFKA_TIMEOUT_VALUE = 30000;
-    private static final int DEFAULT_KAFKA_BUFFER_SIZE = 1024 * 1024 * 10;
-    private static final String DEFAULT_KAFKA_CLIENT_NAME = "kafka-old-api";
-    private static final int DEFAULT_KAFKA_FETCH_REQUEST_CORRELATION_ID = -1;
-    private static final int DEFAULT_KAFKA_FETCH_REQUEST_MIN_BYTES = 1024;
-    private static final int NUM_TRIES_FETCH_TOPIC = 3;
-    private static final int NUM_TRIES_FETCH_OFFSET = 3;
+    public static final String CONFIG_PREFIX = "source.kafka.";
+    public static final String CONFIG_KAFKA_SOCKET_TIMEOUT_VALUE = CONFIG_PREFIX + "socketTimeoutMillis";
+    public static final int CONFIG_KAFKA_SOCKET_TIMEOUT_VALUE_DEFAULT = 30000; // 30 seconds
+    public static final String CONFIG_KAFKA_BUFFER_SIZE_BYTES = CONFIG_PREFIX + "bufferSizeBytes";
+    public static final int CONFIG_KAFKA_BUFFER_SIZE_BYTES_DEFAULT = 1024*1024*10; // 1MB
+    public static final String CONFIG_KAFKA_CLIENT_NAME = CONFIG_PREFIX + "clientName";
+    public static final String CONFIG_KAFKA_CLIENT_NAME_DEFAULT = "gobblin-kafka";
+    public static final String CONFIG_KAFKA_FETCH_REQUEST_CORRELATION_ID = CONFIG_PREFIX + "fetchCorrelationId";
+    private static final int CONFIG_KAFKA_FETCH_REQUEST_CORRELATION_ID_DEFAULT = -1;
+    public static final String CONFIG_KAFKA_FETCH_TIMEOUT_VALUE = CONFIG_PREFIX + "fetchTimeoutMillis";
+    public static final int CONFIG_KAFKA_FETCH_TIMEOUT_VALUE_DEFAULT = 1000; // 1 second
+    public static final String CONFIG_KAFKA_FETCH_REQUEST_MIN_BYTES = CONFIG_PREFIX + "fetchMinBytes";
+    private static final int CONFIG_KAFKA_FETCH_REQUEST_MIN_BYTES_DEFAULT = 1024;
+    public static final String CONFIG_KAFKA_FETCH_TOPIC_NUM_TRIES = CONFIG_PREFIX + "fetchTopicNumTries";
+    private static final int CONFIG_KAFKA_FETCH_TOPIC_NUM_TRIES_DEFAULT = 3;
+    public static final String CONFIG_KAFKA_FETCH_OFFSET_NUM_TRIES = CONFIG_PREFIX + "fetchOffsetNumTries";
+    private static final int CONFIG_KAFKA_FETCH_OFFSET_NUM_TRIES_DEFAULT = 3;
 
-    private final ConcurrentMap<String, SimpleConsumer> activeConsumers = Maps.newConcurrentMap();
-
-    @Override
-    public List<KafkaTopic> getFilteredTopics(List<Pattern> blacklist, List<Pattern> whitelist) {
-      List<TopicMetadata> topicMetadataList = getFilteredMetadataList(blacklist, whitelist);
-
-      List<KafkaTopic> filteredTopics = Lists.newArrayList();
-      for (TopicMetadata topicMetadata : topicMetadataList) {
-        List<KafkaPartition> partitions = getPartitionsForTopic(topicMetadata);
-        filteredTopics.add(new KafkaTopic(topicMetadata.topic(), partitions));
-      }
-      return filteredTopics;
-    }
-
-    private List<KafkaPartition> getPartitionsForTopic(TopicMetadata topicMetadata) {
-      List<KafkaPartition> partitions = Lists.newArrayList();
-
-      for (PartitionMetadata partitionMetadata : topicMetadata.partitionsMetadata()) {
-        if (null == partitionMetadata) {
-          LOG.error("Ignoring topic with null partition metadata " + topicMetadata.topic());
-          return Collections.emptyList();
-        }
-        if (null == partitionMetadata.leader()) {
-          LOG.error(
-              "Ignoring topic with null partition leader " + topicMetadata.topic() + " metatada=" + partitionMetadata);
-          return Collections.emptyList();
-        }
-        partitions.add(new KafkaPartition.Builder().withId(partitionMetadata.partitionId())
-            .withTopicName(topicMetadata.topic()).withLeaderId(partitionMetadata.leader().id())
-            .withLeaderHostAndPort(partitionMetadata.leader().host(), partitionMetadata.leader().port()).build());
-      }
-      return partitions;
-    }
-
-    private List<TopicMetadata> getFilteredMetadataList(List<Pattern> blacklist, List<Pattern> whitelist) {
-      List<TopicMetadata> filteredTopicMetadataList = Lists.newArrayList();
-
-      //Try all brokers one by one, until successfully retrieved topic metadata (topicMetadataList is non-null)
-      for (String broker : KafkaWrapper.this.getBrokers()) {
-        filteredTopicMetadataList = fetchTopicMetadataFromBroker(broker, blacklist, whitelist);
-        if (filteredTopicMetadataList != null) {
-          return filteredTopicMetadataList;
-        }
-      }
-
-      throw new RuntimeException(
-          "Fetching topic metadata from all brokers failed. See log warning for more information.");
-    }
-
-    private List<TopicMetadata> fetchTopicMetadataFromBroker(String broker, List<Pattern> blacklist,
-        List<Pattern> whitelist) {
-
-      List<TopicMetadata> topicMetadataList = fetchTopicMetadataFromBroker(broker);
-      if (topicMetadataList == null) {
-        return null;
-      }
-
-      List<TopicMetadata> filteredTopicMetadataList = Lists.newArrayList();
-      for (TopicMetadata topicMetadata : topicMetadataList) {
-        if (DatasetFilterUtils.survived(topicMetadata.topic(), blacklist, whitelist)) {
-          filteredTopicMetadataList.add(topicMetadata);
-        }
-      }
-      return filteredTopicMetadataList;
-    }
-
-    private List<TopicMetadata> fetchTopicMetadataFromBroker(String broker, String... selectedTopics) {
-      LOG.info(String.format("Fetching topic metadata from broker %s", broker));
-      SimpleConsumer consumer = null;
-      try {
-        consumer = getSimpleConsumer(broker);
-        for (int i = 0; i < NUM_TRIES_FETCH_TOPIC; i++) {
-          try {
-            return consumer.send(new TopicMetadataRequest(Arrays.asList(selectedTopics))).topicsMetadata();
-          } catch (Exception e) {
-            LOG.warn(String.format("Fetching topic metadata from broker %s has failed %d times.", broker, i + 1), e);
-            try {
-              Thread.sleep((long) ((i + Math.random()) * 1000));
-            } catch (InterruptedException e2) {
-              LOG.warn("Caught InterruptedException: " + e2);
-            }
-          }
-        }
-      } finally {
-        if (consumer != null) {
-          consumer.close();
-        }
-      }
-      return null;
-    }
-
-    private SimpleConsumer getSimpleConsumer(String broker) {
-      if (this.activeConsumers.containsKey(broker)) {
-        return this.activeConsumers.get(broker);
-      }
-      SimpleConsumer consumer = this.createSimpleConsumer(broker);
-      this.activeConsumers.putIfAbsent(broker, consumer);
-      return consumer;
-    }
-
-    private SimpleConsumer getSimpleConsumer(HostAndPort hostAndPort) {
-      return this.getSimpleConsumer(hostAndPort.toString());
-    }
-
-    private SimpleConsumer createSimpleConsumer(String broker) {
-      List<String> hostPort = Splitter.on(':').trimResults().omitEmptyStrings().splitToList(broker);
-      return createSimpleConsumer(hostPort.get(0), Integer.parseInt(hostPort.get(1)));
-    }
-
-    private SimpleConsumer createSimpleConsumer(String host, int port) {
-      return new SimpleConsumer(host, port, DEFAULT_KAFKA_TIMEOUT_VALUE, DEFAULT_KAFKA_BUFFER_SIZE,
-          DEFAULT_KAFKA_CLIENT_NAME);
-    }
-
-    @Override
-    protected long getEarliestOffset(KafkaPartition partition) throws KafkaOffsetRetrievalFailureException {
-      Map<TopicAndPartition, PartitionOffsetRequestInfo> offsetRequestInfo =
-          Collections.singletonMap(new TopicAndPartition(partition.getTopicName(), partition.getId()),
-              new PartitionOffsetRequestInfo(kafka.api.OffsetRequest.EarliestTime(), 1));
-      return getOffset(partition, offsetRequestInfo);
-    }
-
-    @Override
-    protected long getLatestOffset(KafkaPartition partition) throws KafkaOffsetRetrievalFailureException {
-      Map<TopicAndPartition, PartitionOffsetRequestInfo> offsetRequestInfo =
-          Collections.singletonMap(new TopicAndPartition(partition.getTopicName(), partition.getId()),
-              new PartitionOffsetRequestInfo(kafka.api.OffsetRequest.LatestTime(), 1));
-      return getOffset(partition, offsetRequestInfo);
-    }
-
-    private long getOffset(KafkaPartition partition,
-        Map<TopicAndPartition, PartitionOffsetRequestInfo> offsetRequestInfo)
-        throws KafkaOffsetRetrievalFailureException {
-      SimpleConsumer consumer = this.getSimpleConsumer(partition.getLeader().getHostAndPort());
-      for (int i = 0; i < NUM_TRIES_FETCH_OFFSET; i++) {
-        try {
-          OffsetResponse offsetResponse = consumer.getOffsetsBefore(new OffsetRequest(offsetRequestInfo,
-              kafka.api.OffsetRequest.CurrentVersion(), DEFAULT_KAFKA_CLIENT_NAME));
-          if (offsetResponse.hasError()) {
-            throw new RuntimeException(
-                "offsetReponse has error: " + offsetResponse.errorCode(partition.getTopicName(), partition.getId()));
-          }
-          return offsetResponse.offsets(partition.getTopicName(), partition.getId())[0];
-        } catch (Exception e) {
-          LOG.warn(
-              String.format("Fetching offset for partition %s has failed %d time(s). Reason: %s", partition, i + 1, e));
-          if (i < NUM_TRIES_FETCH_OFFSET - 1) {
-            try {
-              Thread.sleep((long) ((i + Math.random()) * 1000));
-            } catch (InterruptedException e2) {
-              LOG.error("Caught interrupted exception between retries of getting latest offsets. " + e2);
-            }
-          }
-        }
-      }
-      throw new KafkaOffsetRetrievalFailureException(
-          String.format("Fetching offset for partition %s has failed.", partition));
-    }
-
-    @Override
-    protected Iterator<MessageAndOffset> fetchNextMessageBuffer(KafkaPartition partition, long nextOffset,
-        long maxOffset) {
-      if (nextOffset > maxOffset) {
-        return null;
-      }
-
-      FetchRequest fetchRequest = createFetchRequest(partition, nextOffset);
-
-      try {
-        FetchResponse fetchResponse = getFetchResponseForFetchRequest(fetchRequest, partition);
-        return getIteratorFromFetchResponse(fetchResponse, partition);
-      } catch (Exception e) {
-        LOG.warn(
-            String.format("Fetch message buffer for partition %s has failed: %s. Will refresh topic metadata and retry",
-                partition, e));
-        return refreshTopicMetadataAndRetryFetch(partition, fetchRequest);
-      }
-    }
-
-    private synchronized FetchResponse getFetchResponseForFetchRequest(FetchRequest fetchRequest,
-        KafkaPartition partition) {
-      SimpleConsumer consumer = getSimpleConsumer(partition.getLeader().getHostAndPort());
-
-      FetchResponse fetchResponse = consumer.fetch(fetchRequest);
-      if (fetchResponse.hasError()) {
-        throw new RuntimeException(
-            String.format("error code %d", fetchResponse.errorCode(partition.getTopicName(), partition.getId())));
-      }
-      return fetchResponse;
-    }
-
-    private Iterator<MessageAndOffset> getIteratorFromFetchResponse(FetchResponse fetchResponse,
-        KafkaPartition partition) {
-      try {
-        ByteBufferMessageSet messageBuffer = fetchResponse.messageSet(partition.getTopicName(), partition.getId());
-        return messageBuffer.iterator();
-      } catch (Exception e) {
-        LOG.warn(String.format("Failed to retrieve next message buffer for partition %s: %s."
-            + "The remainder of this partition will be skipped.", partition, e));
-        return null;
-      }
-    }
-
-    private Iterator<MessageAndOffset> refreshTopicMetadataAndRetryFetch(KafkaPartition partition,
-        FetchRequest fetchRequest) {
-      try {
-        refreshTopicMetadata(partition);
-        FetchResponse fetchResponse = getFetchResponseForFetchRequest(fetchRequest, partition);
-        return getIteratorFromFetchResponse(fetchResponse, partition);
-      } catch (Exception e) {
-        LOG.warn(String.format("Fetch message buffer for partition %s has failed: %s. This partition will be skipped.",
-            partition, e));
-        return null;
-      }
-    }
-
-    private void refreshTopicMetadata(KafkaPartition partition) {
-      for (String broker : KafkaWrapper.this.getBrokers()) {
-        List<TopicMetadata> topicMetadataList = fetchTopicMetadataFromBroker(broker, partition.getTopicName());
-        if (topicMetadataList != null && !topicMetadataList.isEmpty()) {
-          TopicMetadata topicMetadata = topicMetadataList.get(0);
-          for (PartitionMetadata partitionMetadata : topicMetadata.partitionsMetadata()) {
-            if (partitionMetadata.partitionId() == partition.getId()) {
-              partition.setLeader(partitionMetadata.leader().id(), partitionMetadata.leader().host(),
-                  partitionMetadata.leader().port());
-              break;
-            }
-          }
-          break;
-        }
-      }
-    }
-
-    private FetchRequest createFetchRequest(KafkaPartition partition, long nextOffset) {
-      TopicAndPartition topicAndPartition = new TopicAndPartition(partition.getTopicName(), partition.getId());
-      PartitionFetchInfo partitionFetchInfo = new PartitionFetchInfo(nextOffset, DEFAULT_KAFKA_BUFFER_SIZE);
-      Map<TopicAndPartition, PartitionFetchInfo> fetchInfo =
-          Collections.singletonMap(topicAndPartition, partitionFetchInfo);
-      return new FetchRequest(DEFAULT_KAFKA_FETCH_REQUEST_CORRELATION_ID, DEFAULT_KAFKA_CLIENT_NAME,
-          DEFAULT_KAFKA_TIMEOUT_VALUE, DEFAULT_KAFKA_FETCH_REQUEST_MIN_BYTES, fetchInfo);
-    }
-
-    @Override
-    public void close() throws IOException {
-      int numOfConsumersNotClosed = 0;
-
-      for (SimpleConsumer consumer : this.activeConsumers.values()) {
-        if (consumer != null) {
-          try {
-            consumer.close();
-          } catch (Exception e) {
-            LOG.warn(String.format("Failed to close Kafka Consumer %s:%d", consumer.host(), consumer.port()));
-            numOfConsumersNotClosed++;
-          }
-        }
-      }
-      this.activeConsumers.clear();
-      if (numOfConsumersNotClosed > 0) {
-        throw new IOException(numOfConsumersNotClosed + " consumer(s) failed to close.");
-      }
-    }
+    private final int socketTimeoutMillis;
+    private final int bufferSize;
+    private final String clientName;
+    private final int fetchCorrelationId;
+    private final int fetchTimeoutMillis;
+    private final int fetchMinBytes;
+    private final int fetchTopicRetries;
+    private final int fetchOffsetRetries;
   }
 
   /**
    * Wrapper for the new Kafka API.
    */
   private class KafkaNewAPI extends KafkaAPI {
+
+    protected KafkaNewAPI(Config config) {
+      super(config);
+    }
 
     @Override
     public List<KafkaTopic> getFilteredTopics(List<Pattern> blacklist, List<Pattern> whitelist) {

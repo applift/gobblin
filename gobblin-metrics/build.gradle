@@ -89,6 +89,9 @@ sourceSets {
     java {
       srcDir 'src/main/gen-java'
     }
+    resources {
+      srcDir 'src/main/avro'
+    }
   }
 }
 

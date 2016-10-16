@@ -19,6 +19,7 @@ import java.util.Properties;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hive.metastore.IMetaStoreClient;
+import org.apache.hadoop.hive.metastore.api.StorageDescriptor;
 import org.apache.hadoop.hive.metastore.api.Table;
 import org.mockito.Mockito;
 import org.testng.Assert;
@@ -28,6 +29,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.SetMultimap;
 import com.google.common.collect.Sets;
+import com.typesafe.config.Config;
 
 import gobblin.hive.HiveMetastoreClientPool;
 import gobblin.util.AutoReturnableObject;
@@ -51,6 +53,24 @@ public class HiveDatasetFinderTest {
     List<HiveDataset> datasets = Lists.newArrayList(finder.getDatasetsIterator());
 
     Assert.assertEquals(datasets.size(), 3);
+  }
+
+  @Test
+  public void testException() throws Exception {
+
+    List<HiveDatasetFinder.DbAndTable> dbAndTables = Lists.newArrayList();
+    dbAndTables.add(new HiveDatasetFinder.DbAndTable("db1", "table1"));
+    dbAndTables.add(new HiveDatasetFinder.DbAndTable("db1", TestHiveDatasetFinder.THROW_EXCEPTION));
+    dbAndTables.add(new HiveDatasetFinder.DbAndTable("db1", "table3"));
+    HiveMetastoreClientPool pool = getTestPool(dbAndTables);
+
+    Properties properties = new Properties();
+    properties.put(HiveDatasetFinder.HIVE_DATASET_PREFIX + "." + WhitelistBlacklist.WHITELIST, "");
+
+    HiveDatasetFinder finder = new TestHiveDatasetFinder(FileSystem.getLocal(new Configuration()), properties, pool);
+    List<HiveDataset> datasets = Lists.newArrayList(finder.getDatasetsIterator());
+
+    Assert.assertEquals(datasets.size(), 2);
   }
 
   @Test
@@ -123,6 +143,41 @@ public class HiveDatasetFinderTest {
         Sets.newHashSet("table1", "table2"));
   }
 
+  @Test
+  public void testDatasetConfig() throws Exception {
+
+    List<HiveDatasetFinder.DbAndTable> dbAndTables = Lists.newArrayList();
+    dbAndTables.add(new HiveDatasetFinder.DbAndTable("db1", "table1"));
+    HiveMetastoreClientPool pool = getTestPool(dbAndTables);
+
+    Properties properties = new Properties();
+    properties.put(HiveDatasetFinder.HIVE_DATASET_PREFIX + "." + WhitelistBlacklist.WHITELIST, "");
+
+    properties.put("hive.dataset.test.conf1", "conf1-val1");
+    properties.put("hive.dataset.test.conf2", "conf2-val2");
+
+    HiveDatasetFinder finder = new TestHiveDatasetFinder(FileSystem.getLocal(new Configuration()), properties, pool);
+    List<HiveDataset> datasets = Lists.newArrayList(finder.getDatasetsIterator());
+
+    Assert.assertEquals(datasets.size(), 1);
+    HiveDataset hiveDataset = datasets.get(0);
+
+    Assert.assertEquals(hiveDataset.getDatasetConfig().getString("hive.dataset.test.conf1"), "conf1-val1");
+    Assert.assertEquals(hiveDataset.getDatasetConfig().getString("hive.dataset.test.conf2"), "conf2-val2");
+
+    // Test scoped configs with prefix
+    properties.put(HiveDatasetFinder.HIVE_DATASET_CONFIG_PREFIX_KEY, "hive.dataset.test");
+
+    finder = new TestHiveDatasetFinder(FileSystem.getLocal(new Configuration()), properties, pool);
+    datasets = Lists.newArrayList(finder.getDatasetsIterator());
+
+    Assert.assertEquals(datasets.size(), 1);
+    hiveDataset = datasets.get(0);
+    Assert.assertEquals(hiveDataset.getDatasetConfig().getString("conf1"), "conf1-val1");
+    Assert.assertEquals(hiveDataset.getDatasetConfig().getString("conf2"), "conf2-val2");
+
+  }
+
   private HiveMetastoreClientPool getTestPool(List<HiveDatasetFinder.DbAndTable> dbAndTables) throws Exception {
 
     SetMultimap<String, String> entities = HashMultimap.create();
@@ -141,9 +196,13 @@ public class HiveDatasetFinderTest {
       Table table = new Table();
       table.setDbName(dbAndTable.getDb());
       table.setTableName(dbAndTable.getTable());
+      StorageDescriptor sd = new StorageDescriptor();
+      sd.setLocation("/tmp/test");
+      table.setSd(sd);
       Mockito.doReturn(table).when(client).getTable(dbAndTable.getDb(), dbAndTable.getTable());
     }
 
+    @SuppressWarnings("unchecked")
     AutoReturnableObject<IMetaStoreClient> aro = Mockito.mock(AutoReturnableObject.class);
     Mockito.when(aro.get()).thenReturn(client);
 
@@ -154,17 +213,20 @@ public class HiveDatasetFinderTest {
 
   private class TestHiveDatasetFinder extends HiveDatasetFinder {
 
+    public static final String THROW_EXCEPTION = "throw_exception";
+
     public TestHiveDatasetFinder(FileSystem fs, Properties properties, HiveMetastoreClientPool pool)
         throws IOException {
       super(fs, properties, pool);
     }
 
     @Override
-    protected HiveDataset createHiveDataset(Table table)
+    protected HiveDataset createHiveDataset(Table table, Config config)
         throws IOException {
-      HiveDataset dataset = Mockito.mock(HiveDataset.class);
-      Mockito.when(dataset.getTable()).thenReturn(new org.apache.hadoop.hive.ql.metadata.Table(table));
-      return dataset;
+      if (table.getTableName().equals(THROW_EXCEPTION)) {
+        throw new IOException("bad table");
+      }
+      return new HiveDataset(super.fs, super.clientPool, new org.apache.hadoop.hive.ql.metadata.Table(table), config);
     }
   }
 

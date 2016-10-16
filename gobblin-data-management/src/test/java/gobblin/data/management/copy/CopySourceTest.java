@@ -12,6 +12,11 @@
 
 package gobblin.data.management.copy;
 
+import java.util.List;
+
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
 import gobblin.configuration.ConfigurationKeys;
 import gobblin.configuration.SourceState;
 import gobblin.data.management.dataset.DatasetUtils;
@@ -19,23 +24,19 @@ import gobblin.source.workunit.Extract;
 import gobblin.source.workunit.WorkUnit;
 import gobblin.util.JobLauncherUtils;
 
-import java.util.List;
-
-import org.testng.Assert;
-import org.testng.annotations.Test;
-
 
 public class CopySourceTest {
 
   @Test
-  public void testCopySource() throws Exception {
+  public void testCopySource()
+      throws Exception {
 
     SourceState state = new SourceState();
 
     state.setProp(ConfigurationKeys.SOURCE_FILEBASED_FS_URI, "file:///");
     state.setProp(ConfigurationKeys.WRITER_FILE_SYSTEM_URI, "file:///");
     state.setProp(ConfigurationKeys.DATA_PUBLISHER_FINAL_DIR, "/target/dir");
-    state.setProp(DatasetUtils.DATASET_PROFILE_CLASS_KEY, TestCopyableDatasetFinder.class.getCanonicalName());
+    state.setProp(DatasetUtils.DATASET_PROFILE_CLASS_KEY, TestCopyableDatasetFinder.class.getName());
 
     CopySource source = new CopySource();
 
@@ -52,11 +53,11 @@ public class CopySourceTest {
       Assert.assertEquals(file.getDestinationOwnerAndPermission(), TestCopyableDataset.OWNER_AND_PERMISSION);
       Assert.assertEquals(workUnit.getExtract(), extract);
     }
-
   }
 
   @Test
-  public void testPartitionableDataset() throws Exception {
+  public void testPartitionableDataset()
+      throws Exception {
 
     SourceState state = new SourceState();
 
@@ -94,11 +95,10 @@ public class CopySourceTest {
         }
         Assert.assertEquals(workUnit.getExtract(), extractAbove);
       }
-
     }
 
     Assert.assertNotNull(extractAbove);
     Assert.assertNotNull(extractBelow);
-
   }
+
 }

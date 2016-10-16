@@ -13,40 +13,55 @@
 package gobblin.data.management.copy.hive;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 
-import javax.annotation.Nullable;
+import javax.annotation.Nonnull;
 
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.reflect.ConstructorUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.metastore.IMetaStoreClient;
 import org.apache.hadoop.hive.metastore.api.Table;
-import org.apache.thrift.TException;
 
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
+import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
+import gobblin.config.client.ConfigClient;
+import gobblin.config.client.ConfigClientCache;
+import gobblin.config.client.api.ConfigStoreFactoryDoesNotExistsException;
+import gobblin.config.client.api.VersionStabilityPolicy;
+import gobblin.config.store.api.ConfigStoreCreationException;
+import gobblin.configuration.ConfigurationKeys;
+import gobblin.data.management.hive.HiveConfigClientUtils;
 import gobblin.dataset.IterableDatasetFinder;
 import gobblin.hive.HiveMetastoreClientPool;
+import gobblin.metrics.event.EventSubmitter;
+import gobblin.metrics.event.sla.SlaEventKeys;
 import gobblin.util.AutoReturnableObject;
-
-import lombok.Data;
+import gobblin.util.ConfigUtils;
 
 
 /**
  * Finds {@link HiveDataset}s. Will look for tables in a database using a {@link WhitelistBlacklist},
  * and creates a {@link HiveDataset} for each one.
  */
+@Slf4j
 public class HiveDatasetFinder implements IterableDatasetFinder<HiveDataset> {
 
   public static final String HIVE_DATASET_PREFIX = "hive.dataset";
@@ -55,17 +70,74 @@ public class HiveDatasetFinder implements IterableDatasetFinder<HiveDataset> {
   public static final String TABLE_PATTERN_KEY = HIVE_DATASET_PREFIX + ".table.pattern";
   public static final String DEFAULT_TABLE_PATTERN = "*";
 
-  private final Properties properties;
-  private final HiveMetastoreClientPool clientPool;
-  private final FileSystem fs;
+  /*
+   * By setting the prefix, only config keys with this prefix will be used to build a HiveDataset.
+   * By passing scoped configurations the same config keys can be used in different contexts.
+   *
+   * E.g
+   * 1. For CopySource, prefix is gobblin.dataset.copy
+   * 2. For avro to Orc conversion, prefix is hive.dataset.conversion.avro.orc
+   * 3. For retention, prefix is gobblin.retention.
+   *
+   */
+  public static final String HIVE_DATASET_CONFIG_PREFIX_KEY = "hive.dataset.configPrefix";
+  private static final String DEFAULT_HIVE_DATASET_CONIFG_PREFIX = StringUtils.EMPTY;
+
+  public static final String HIVE_DATASET_IS_BLACKLISTED_KEY = "is.blacklisted";
+  private static final boolean DEFAULT_HIVE_DATASET_IS_BLACKLISTED_KEY = false;
+
+  /**
+   * This is an optional key.
+   * The fully qualified name of a {@link Function} class which returns the relative uri of a dataset in the config store
+   */
+  public static final String CONFIG_STORE_DATASET_URI_BUILDER_CLASS = "gobblin.config.management.datasetUriBuilderClass";
+
+  // Event names
+  private static final String DATASET_FOUND = "DatasetFound";
+  private static final String DATASET_ERROR = "DatasetError";
+  private static final String FAILURE_CONTEXT = "FailureContext";
+
+  protected final Properties properties;
+  protected final HiveMetastoreClientPool clientPool;
+  protected final FileSystem fs;
   private final WhitelistBlacklist whitelistBlacklist;
+  private final Optional<EventSubmitter> eventSubmitter;
+
+  protected final Optional<String> configStoreUri;
+  protected final Function<Table, String> configStoreDatasetUriBuilder;
+
+  protected final String datasetConfigPrefix;
+  protected final ConfigClient configClient;
+  private final Config jobConfig;
 
   public HiveDatasetFinder(FileSystem fs, Properties properties) throws IOException {
     this(fs, properties, createClientPool(properties));
   }
 
+  protected HiveDatasetFinder(FileSystem fs, Properties properties, ConfigClient configClient) throws IOException {
+    this(fs, properties, createClientPool(properties), null, configClient);
+  }
+
+  public HiveDatasetFinder(FileSystem fs, Properties properties, EventSubmitter eventSubmitter) throws IOException {
+    this(fs, properties, createClientPool(properties), eventSubmitter);
+  }
+
   protected HiveDatasetFinder(FileSystem fs, Properties properties, HiveMetastoreClientPool clientPool)
       throws IOException {
+    this(fs, properties, clientPool, null);
+  }
+
+  protected HiveDatasetFinder(FileSystem fs, Properties properties, HiveMetastoreClientPool clientPool,
+      EventSubmitter eventSubmitter) throws IOException {
+    this(fs, properties, clientPool, eventSubmitter, ConfigClientCache.getClient(VersionStabilityPolicy.STRONG_LOCAL_STABILITY));
+  }
+
+  @SuppressWarnings("unchecked")
+  //SupressWarning justification : CONFIG_STORE_DATASET_URI_BUILDER_CLASS must be of type Function<DbAndTable, String>.
+  //It is safe to throw RuntimeException otherwise
+  protected HiveDatasetFinder(FileSystem fs, Properties properties, HiveMetastoreClientPool clientPool,
+      EventSubmitter eventSubmitter, ConfigClient configClient) throws IOException {
+
     this.properties = properties;
     this.clientPool = clientPool;
     this.fs = fs;
@@ -82,6 +154,22 @@ public class HiveDatasetFinder implements IterableDatasetFinder<HiveDataset> {
     } else {
       this.whitelistBlacklist = new WhitelistBlacklist(config.getConfig(HIVE_DATASET_PREFIX));
     }
+
+    this.eventSubmitter = Optional.fromNullable(eventSubmitter);
+    this.configStoreUri = StringUtils.isNotBlank(properties.getProperty(ConfigurationKeys.CONFIG_MANAGEMENT_STORE_URI)) ?
+        Optional.of(properties.getProperty(ConfigurationKeys.CONFIG_MANAGEMENT_STORE_URI)) : Optional.<String>absent();
+    this.datasetConfigPrefix = properties.getProperty(HIVE_DATASET_CONFIG_PREFIX_KEY, DEFAULT_HIVE_DATASET_CONIFG_PREFIX);
+    this.configClient = configClient;
+    try {
+      this.configStoreDatasetUriBuilder =
+          properties.containsKey(CONFIG_STORE_DATASET_URI_BUILDER_CLASS) ? (Function<Table, String>) ConstructorUtils
+              .invokeConstructor(Class.forName(properties.getProperty(CONFIG_STORE_DATASET_URI_BUILDER_CLASS)))
+              : DEFAULT_CONFIG_STORE_DATASET_URI_BUILDER;
+    } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException
+        | ClassNotFoundException e) {
+      throw new RuntimeException(e);
+    }
+    this.jobConfig = ConfigUtils.propertiesToConfig(properties);
   }
 
   protected static HiveMetastoreClientPool createClientPool(Properties properties) throws IOException {
@@ -125,6 +213,11 @@ public class HiveDatasetFinder implements IterableDatasetFinder<HiveDataset> {
   public static class DbAndTable {
     private final String db;
     private final String table;
+
+    @Override
+    public String toString() {
+      return String.format("%s.%s", this.db, this.table);
+    }
   }
 
   @Override
@@ -134,29 +227,90 @@ public class HiveDatasetFinder implements IterableDatasetFinder<HiveDataset> {
 
   @Override
   public Iterator<HiveDataset> getDatasetsIterator() throws IOException {
-    return Iterators.transform(getTables().iterator(), new Function<DbAndTable, HiveDataset>() {
+
+    return new AbstractIterator<HiveDataset>() {
+      private Iterator<DbAndTable> tables = getTables().iterator();
+
       @Override
-      public HiveDataset apply(@Nullable DbAndTable dbAndTable) {
-        if (dbAndTable == null) {
-          return null;
+      protected HiveDataset computeNext() {
+        while (this.tables.hasNext()) {
+          DbAndTable dbAndTable = this.tables.next();
+
+          try (AutoReturnableObject<IMetaStoreClient> client = HiveDatasetFinder.this.clientPool.getClient()) {
+            Table table = client.get().getTable(dbAndTable.getDb(), dbAndTable.getTable());
+            Config datasetConfig = getDatasetConfig(table);
+            if (ConfigUtils.getBoolean(datasetConfig, HIVE_DATASET_IS_BLACKLISTED_KEY, DEFAULT_HIVE_DATASET_IS_BLACKLISTED_KEY)) {
+              continue;
+            }
+            EventSubmitter.submit(HiveDatasetFinder.this.eventSubmitter, DATASET_FOUND, SlaEventKeys.DATASET_URN_KEY, dbAndTable.toString());
+            return createHiveDataset(table, datasetConfig);
+          } catch (Throwable t) {
+            log.error(String.format("Failed to create HiveDataset for table %s.%s", dbAndTable.getDb(), dbAndTable.getTable()), t);
+            EventSubmitter.submit(HiveDatasetFinder.this.eventSubmitter, DATASET_ERROR,
+                SlaEventKeys.DATASET_URN_KEY, dbAndTable.toString(),
+                FAILURE_CONTEXT, t.toString());
+          }
         }
-        try (AutoReturnableObject<IMetaStoreClient> client = HiveDatasetFinder.this.clientPool.getClient()) {
-          Table table = client.get().getTable(dbAndTable.getDb(), dbAndTable.getTable());
-          return createHiveDataset(table);
-        } catch (IOException | TException ioe) {
-          throw new RuntimeException(ioe);
-        }
+        return endOfData();
       }
-    });
+    };
   }
 
+
+  /**
+   * @deprecated Use {@link #createHiveDataset(Table, Config)} instead
+   */
+  @Deprecated
   protected HiveDataset createHiveDataset(Table table) throws IOException {
-    return new HiveDataset(this.fs, this.clientPool, new org.apache.hadoop.hive.ql.metadata.Table(table),
-        this.properties);
+    return createHiveDataset(table, ConfigFactory.empty());
+  }
+
+  protected HiveDataset createHiveDataset(Table table, Config datasetConfig) throws IOException {
+    return new HiveDataset(this.fs, this.clientPool, new org.apache.hadoop.hive.ql.metadata.Table(table), this.properties, datasetConfig);
   }
 
   @Override
   public Path commonDatasetRoot() {
     return new Path("/");
   }
+
+  /**
+   * Gets the {@link Config} for this <code>dbAndTable</code>.
+   * Cases:
+   * <ul>
+   * <li>If {@link #configStoreUri} is available it gets the dataset config from the config store at this uri
+   * <li>If {@link #configStoreUri} is not available it uses the job config as dataset config
+   * <li>If {@link #datasetConfigPrefix} is specified, only configs with this prefix is returned
+   * <li>If {@link #datasetConfigPrefix} is not specified, all configs are returned
+   * </ul>
+   * @param table of the dataset to get config
+   * @return the {@link Config} for <code>dbAndTable</code>
+   */
+  private Config getDatasetConfig(Table table) throws ConfigStoreFactoryDoesNotExistsException,
+      ConfigStoreCreationException, URISyntaxException {
+
+    Config datasetConfig;
+
+    // Config store enabled
+    if (this.configStoreUri.isPresent()) {
+      datasetConfig = this.configClient.getConfig(this.configStoreUri.get() + Path.SEPARATOR
+              + this.configStoreDatasetUriBuilder.apply(table));
+
+    // If config store is not enabled use job config
+    } else {
+      datasetConfig = this.jobConfig;
+    }
+
+    return StringUtils.isBlank(this.datasetConfigPrefix) ? datasetConfig : ConfigUtils.getConfig(datasetConfig,
+        this.datasetConfigPrefix, ConfigFactory.empty());
+  }
+
+  private static final Function<Table, String> DEFAULT_CONFIG_STORE_DATASET_URI_BUILDER =
+      new Function<Table, String>() {
+
+        @Override
+        public String apply(@Nonnull Table table) {
+          return HiveConfigClientUtils.getDatasetUri(table);
+        }
+      };
 }

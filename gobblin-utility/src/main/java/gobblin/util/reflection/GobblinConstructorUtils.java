@@ -50,13 +50,42 @@ public class GobblinConstructorUtils {
       }
 
       if (ConstructorUtils.getMatchingAccessibleConstructor(cls, parameterTypes) != null) {
-        log.info(
-            String.format("Found accessible constructor with parameter types %s found", Arrays.asList(parameterTypes)));
         return ConstructorUtils.invokeConstructor(cls, args.toArray(new Object[args.size()]));
       }
-      log.info(String.format("No accessible constructor with parameter types %s found", Arrays.asList(parameterTypes)));
     }
     throw new NoSuchMethodException("No accessible constructor found");
+  }
+
+  /**
+   * Returns a new instance of the <code>cls</code> based on a set of arguments. The method will search for a
+   * constructor accepting the first k arguments in <code>args</code> for every k from args.length to 0, and will
+   * invoke the first constructor found.
+   *
+   * For example, {@link #invokeLongestConstructor}(cls, myString, myInt) will first attempt to create an object with
+   * of class <code>cls</code> with constructor <init>(String, int), if it fails it will attempt <init>(String), and
+   * finally <init>().
+   *
+   * @param cls the class to instantiate.
+   * @param args the arguments to use for instantiation.
+   * @throws ReflectiveOperationException
+   */
+  public static <T> T invokeLongestConstructor(Class<T> cls, Object... args) throws ReflectiveOperationException {
+
+    Class<?>[] parameterTypes = new Class[args.length];
+    for (int i = 0; i < args.length; i++) {
+      parameterTypes[i] = args[i].getClass();
+    }
+
+    for (int i = args.length; i >= 0; i--) {
+      if (ConstructorUtils.getMatchingAccessibleConstructor(cls, Arrays.copyOfRange(parameterTypes, 0, i)) != null) {
+        log.info(
+            String.format("Found accessible constructor for class %s with parameter types %s.", cls,
+                Arrays.toString(Arrays.copyOfRange(parameterTypes, 0, i))));
+        return ConstructorUtils.invokeConstructor(cls, Arrays.copyOfRange(args, 0, i));
+      }
+    }
+    throw new NoSuchMethodException(String.format("No accessible constructor for class %s with parameters a subset of %s.",
+        cls, Arrays.toString(parameterTypes)));
   }
 
   /**

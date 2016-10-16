@@ -12,12 +12,9 @@
 
 package gobblin.runtime.mapreduce;
 
-import java.io.BufferedWriter;
+import java.io.DataOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.net.URI;
 import java.util.List;
 import java.util.Properties;
@@ -120,12 +117,14 @@ public class MRJobLauncher extends AbstractJobLauncher {
 
   private volatile boolean hadoopJobSubmitted = false;
 
-  public MRJobLauncher(Properties jobProps) throws Exception {
+  public MRJobLauncher(Properties jobProps)
+      throws Exception {
     this(jobProps, new Configuration());
   }
 
-  public MRJobLauncher(Properties jobProps, Configuration conf) throws Exception {
-    super(jobProps, ImmutableList.<Tag<?>> of());
+  public MRJobLauncher(Properties jobProps, Configuration conf)
+      throws Exception {
+    super(jobProps, ImmutableList.<Tag<?>>of());
 
     this.conf = conf;
     // Put job configuration properties into the Hadoop configuration so they are available in the mappers
@@ -140,7 +139,9 @@ public class MRJobLauncher extends AbstractJobLauncher {
     this.fs = buildFileSystem(jobProps, this.conf);
 
     this.mrJobDir =
-        new Path(this.jobProps.getProperty(ConfigurationKeys.MR_JOB_ROOT_DIR_KEY), this.jobContext.getJobName());
+        new Path(
+            new Path(this.jobProps.getProperty(ConfigurationKeys.MR_JOB_ROOT_DIR_KEY), this.jobContext.getJobName()),
+            this.jobContext.getJobId());
     if (this.fs.exists(this.mrJobDir)) {
       LOG.warn("Job working directory already exists for job " + this.jobContext.getJobName());
       this.fs.delete(this.mrJobDir, true);
@@ -161,14 +162,16 @@ public class MRJobLauncher extends AbstractJobLauncher {
     this.parallelRunnerThreads = Integer.parseInt(jobProps.getProperty(ParallelRunner.PARALLEL_RUNNER_THREADS_KEY,
         Integer.toString(ParallelRunner.DEFAULT_PARALLEL_RUNNER_THREADS)));
 
-    this.taskStateCollectorService = new TaskStateCollectorService(jobProps, this.jobContext.getJobState(),
-        this.eventBus, this.fs, outputTaskStateDir);
+    this.taskStateCollectorService =
+        new TaskStateCollectorService(jobProps, this.jobContext.getJobState(), this.eventBus, this.fs,
+            outputTaskStateDir);
 
     startCancellationExecutor();
   }
 
   @Override
-  public void close() throws IOException {
+  public void close()
+      throws IOException {
     try {
       if (this.hadoopJobSubmitted && !this.job.isComplete()) {
         LOG.info("Killing the Hadoop MR job for job " + this.jobContext.getJobId());
@@ -179,12 +182,14 @@ public class MRJobLauncher extends AbstractJobLauncher {
         cleanUpWorkingDirectory();
       } finally {
         super.close();
+        fs.close();
       }
     }
   }
 
   @Override
-  protected void runWorkUnits(List<WorkUnit> workUnits) throws Exception {
+  protected void runWorkUnits(List<WorkUnit> workUnits)
+      throws Exception {
     String jobName = this.jobContext.getJobName();
     JobState jobState = this.jobContext.getJobState();
 
@@ -244,7 +249,8 @@ public class MRJobLauncher extends AbstractJobLauncher {
   /**
    * Add dependent jars and files.
    */
-  private void addDependencies() throws IOException {
+  private void addDependencies()
+      throws IOException {
     TimingEvent distributedCacheSetupTimer =
         this.eventSubmitter.getTimingEvent(TimingEvent.RunJobTimings.MR_DISTRIBUTED_CACHE_SETUP);
 
@@ -282,7 +288,8 @@ public class MRJobLauncher extends AbstractJobLauncher {
   /**
    * Prepare the Hadoop MR job, including configuring the job and setting up the input/output paths.
    */
-  private void prepareHadoopJob(List<WorkUnit> workUnits) throws IOException {
+  private void prepareHadoopJob(List<WorkUnit> workUnits)
+      throws IOException {
     TimingEvent mrJobSetupTimer = this.eventSubmitter.getTimingEvent(TimingEvent.RunJobTimings.MR_JOB_SETUP);
 
     this.job.setJarByClass(MRJobLauncher.class);
@@ -291,7 +298,7 @@ public class MRJobLauncher extends AbstractJobLauncher {
     // The job is mapper-only
     this.job.setNumReduceTasks(0);
 
-    this.job.setInputFormatClass(NLineInputFormat.class);
+    this.job.setInputFormatClass(GobblinWorkUnitsInputFormat.class);
     this.job.setOutputFormatClass(GobblinOutputFormat.class);
     this.job.setMapOutputKeyClass(NullWritable.class);
     this.job.setMapOutputValueClass(NullWritable.class);
@@ -302,8 +309,8 @@ public class MRJobLauncher extends AbstractJobLauncher {
     // Job input path is where input work unit files are stored
 
     // Prepare job input
-    Path jobInputFile = prepareJobInput(workUnits);
-    FileInputFormat.addInputPath(this.job, jobInputFile);
+    prepareJobInput(workUnits);
+    FileInputFormat.addInputPath(this.job, this.jobInputPath);
 
     // Job output path is where serialized task states are stored
     FileOutputFormat.setOutputPath(this.job, this.jobOutputPath);
@@ -312,14 +319,8 @@ public class MRJobLauncher extends AbstractJobLauncher {
     serializeJobState(this.fs, this.mrJobDir, this.conf, this.jobContext.getJobState(), this.job);
 
     if (this.jobProps.containsKey(ConfigurationKeys.MR_JOB_MAX_MAPPERS_KEY)) {
-      // When there is a limit on the number of mappers, each mapper may run
-      // multiple tasks if the total number of tasks is larger than the limit.
-      int maxMappers = Integer.parseInt(this.jobProps.getProperty(ConfigurationKeys.MR_JOB_MAX_MAPPERS_KEY));
-      if (workUnits.size() > maxMappers) {
-        int numTasksPerMapper =
-            workUnits.size() % maxMappers == 0 ? workUnits.size() / maxMappers : workUnits.size() / maxMappers + 1;
-        NLineInputFormat.setNumLinesPerSplit(this.job, numTasksPerMapper);
-      }
+      GobblinWorkUnitsInputFormat.setMaxMappers(this.job,
+          Integer.parseInt(this.jobProps.getProperty(ConfigurationKeys.MR_JOB_MAX_MAPPERS_KEY)));
     }
 
     mrJobSetupTimer.stop();
@@ -329,8 +330,11 @@ public class MRJobLauncher extends AbstractJobLauncher {
   static void serializeJobState(FileSystem fs, Path mrJobDir, Configuration conf, JobState jobState, Job job)
       throws IOException {
     Path jobStateFilePath = new Path(mrJobDir, JOB_STATE_FILE_NAME);
-    short jobStateRF = (short) conf.getInt("dfs.replication.max", 20);
-    SerializationUtils.serializeState(fs, jobStateFilePath, jobState, jobStateRF);
+    // Write the job state with an empty task set (work units are read by the mapper from a different file)
+    try (DataOutputStream dataOutputStream = new DataOutputStream(fs.create(jobStateFilePath))) {
+      jobState.write(dataOutputStream, false);
+    }
+
     job.getConfiguration().set(ConfigurationKeys.JOB_STATE_FILE_PATH_KEY, jobStateFilePath.toString());
 
     DistributedCache.addCacheFile(jobStateFilePath.toUri(), job.getConfiguration());
@@ -342,7 +346,8 @@ public class MRJobLauncher extends AbstractJobLauncher {
    * so the mappers can use them.
    */
   @SuppressWarnings("deprecation")
-  private void addJars(Path jarFileDir, String jarFileList) throws IOException {
+  private void addJars(Path jarFileDir, String jarFileList)
+      throws IOException {
     LocalFileSystem lfs = FileSystem.getLocal(this.conf);
     for (String jarFile : SPLITTER.split(jarFileList)) {
       Path srcJarFile = new Path(jarFile);
@@ -363,7 +368,8 @@ public class MRJobLauncher extends AbstractJobLauncher {
    * Add local non-jar files the job depends on to DistributedCache.
    */
   @SuppressWarnings("deprecation")
-  private void addLocalFiles(Path jobFileDir, String jobFileList) throws IOException {
+  private void addLocalFiles(Path jobFileDir, String jobFileList)
+      throws IOException {
     DistributedCache.createSymlink(this.conf);
     for (String jobFile : SPLITTER.split(jobFileList)) {
       Path srcJobFile = new Path(jobFile);
@@ -396,7 +402,8 @@ public class MRJobLauncher extends AbstractJobLauncher {
     }
   }
 
-  private void addHdfsJars(String hdfsJarFileList) throws IOException {
+  private void addHdfsJars(String hdfsJarFileList)
+      throws IOException {
     for (String jarFile : SPLITTER.split(hdfsJarFileList)) {
       FileStatus[] status = this.fs.listStatus(new Path(jarFile));
       for (FileStatus fileStatus : status) {
@@ -413,18 +420,11 @@ public class MRJobLauncher extends AbstractJobLauncher {
    * Prepare the job input.
    * @throws IOException
    */
-  private Path prepareJobInput(List<WorkUnit> workUnits) throws IOException {
-    // The job input is a file named after the job ID listing all work unit file paths
-    Path jobInputFile = new Path(this.jobInputPath, this.jobContext.getJobId() + WORK_UNIT_LIST_FILE_EXTENSION);
-
+  private void prepareJobInput(List<WorkUnit> workUnits)
+      throws IOException {
     Closer closer = Closer.create();
     try {
       ParallelRunner parallelRunner = closer.register(new ParallelRunner(this.parallelRunnerThreads, this.fs));
-
-      // Open the job input file
-      OutputStream os = closer.register(this.fs.create(jobInputFile));
-      Writer osw = closer.register(new OutputStreamWriter(os, ConfigurationKeys.DEFAULT_CHARSET_ENCODING));
-      Writer bw = closer.register(new BufferedWriter(osw));
 
       int multiTaskIdSequence = 0;
       // Serialize each work unit into a file named after the task ID
@@ -438,11 +438,11 @@ public class MRJobLauncher extends AbstractJobLauncher {
           workUnitFileName = workUnit.getProp(ConfigurationKeys.TASK_ID_KEY) + WORK_UNIT_FILE_EXTENSION;
         }
         Path workUnitFile = new Path(this.jobInputPath, workUnitFileName);
+        LOG.debug("Writing work unit file " + workUnitFileName);
 
         parallelRunner.serializeToFile(workUnit, workUnitFile);
 
         // Append the work unit file path to the job input file
-        bw.write(workUnitFile.toUri().getPath() + "\n");
       }
     } catch (Throwable t) {
       throw closer.rethrow(t);
@@ -450,7 +450,6 @@ public class MRJobLauncher extends AbstractJobLauncher {
       closer.close();
     }
 
-    return jobInputFile;
   }
 
   /**
@@ -471,7 +470,8 @@ public class MRJobLauncher extends AbstractJobLauncher {
    * Create a {@link gobblin.metrics.GobblinMetrics} instance for this job run from the Hadoop counters.
    */
   @VisibleForTesting
-  void countersToMetrics(GobblinMetrics metrics) throws IOException {
+  void countersToMetrics(GobblinMetrics metrics)
+      throws IOException {
     Optional<Counters> counters = Optional.fromNullable(this.job.getCounters());
 
     if (counters.isPresent()) {
@@ -489,9 +489,10 @@ public class MRJobLauncher extends AbstractJobLauncher {
     }
   }
 
-  private static FileSystem buildFileSystem(Properties jobProps, Configuration configuration) throws IOException {
+  private static FileSystem buildFileSystem(Properties jobProps, Configuration configuration)
+      throws IOException {
     URI fsUri = URI.create(jobProps.getProperty(ConfigurationKeys.FS_URI_KEY, ConfigurationKeys.LOCAL_FS_URI));
-    return FileSystem.get(fsUri, configuration);
+    return FileSystem.newInstance(fsUri, configuration);
   }
 
   /**
@@ -531,8 +532,9 @@ public class MRJobLauncher extends AbstractJobLauncher {
         boolean foundStateFile = false;
         for (Path dcPath : DistributedCache.getLocalCacheFiles(context.getConfiguration())) {
           if (dcPath.getName().equals(jobStateFileName)) {
-            SerializationUtils.deserializeStateFromInputStream(
-                closer.register(new FileInputStream(dcPath.toUri().getPath())), this.jobState);
+            SerializationUtils
+                .deserializeStateFromInputStream(closer.register(new FileInputStream(dcPath.toUri().getPath())),
+                    this.jobState);
             foundStateFile = true;
             break;
           }
@@ -566,7 +568,8 @@ public class MRJobLauncher extends AbstractJobLauncher {
     }
 
     @Override
-    public void run(Context context) throws IOException, InterruptedException {
+    public void run(Context context)
+        throws IOException, InterruptedException {
       this.setup(context);
 
       try {
@@ -583,7 +586,8 @@ public class MRJobLauncher extends AbstractJobLauncher {
     }
 
     @Override
-    public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+    public void map(LongWritable key, Text value, Context context)
+        throws IOException, InterruptedException {
       WorkUnit workUnit = (value.toString().endsWith(MULTI_WORK_UNIT_FILE_EXTENSION) ? MultiWorkUnit.createEmpty()
           : WorkUnit.createEmpty());
       SerializationUtils.deserializeState(this.fs, new Path(value.toString()), workUnit);
@@ -598,7 +602,8 @@ public class MRJobLauncher extends AbstractJobLauncher {
     }
 
     @Override
-    protected void cleanup(Context context) throws IOException, InterruptedException {
+    protected void cleanup(Context context)
+        throws IOException, InterruptedException {
       try {
         this.serviceManager.stopAsync().awaitStopped(5, TimeUnit.SECONDS);
       } catch (TimeoutException te) {
@@ -607,6 +612,8 @@ public class MRJobLauncher extends AbstractJobLauncher {
         if (this.jobMetrics.isPresent()) {
           try {
             this.jobMetrics.get().stopMetricsReporting();
+          } catch (Throwable throwable) {
+            LOG.error("Failed to stop job metrics reporting.", throwable);
           } finally {
             GobblinMetrics.remove(this.jobMetrics.get().getName());
           }

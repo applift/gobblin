@@ -84,7 +84,7 @@ public class CopyableFile extends CopyEntity implements File {
   @lombok.Builder(builderClassName = "Builder", builderMethodName = "_hiddenBuilder")
   public CopyableFile(FileStatus origin, Path destination, OwnerAndPermission destinationOwnerAndPermission,
       List<OwnerAndPermission> ancestorsOwnerAndPermission, byte[] checksum, PreserveAttributes preserve,
-      String fileSet, long originTimestamp, long upstreamTimestamp, Map<String, Object> additionalMetadata) {
+      String fileSet, long originTimestamp, long upstreamTimestamp, Map<String, String> additionalMetadata) {
     super(fileSet, additionalMetadata);
     this.origin = origin;
     this.destination = destination;
@@ -139,7 +139,7 @@ public class CopyableFile extends CopyEntity implements File {
 
     private CopyConfiguration configuration;
     private FileSystem originFs;
-    private Map<String, Object> additionalMetadata;
+    private Map<String, String> additionalMetadata;
 
     private Builder originFS(FileSystem originFs) {
       this.originFs = originFs;
@@ -280,7 +280,7 @@ public class CopyableFile extends CopyEntity implements File {
    * @return A list of the computed {@link OwnerAndPermission}s starting from fromPath, up to but excluding toPath.
    * @throws IOException if toPath is not an ancestor of fromPath.
    */
-  public static List<OwnerAndPermission> resolveReplicatedOwnerAndPermissionsRecursively(FileSystem fs, Path fromPath,
+  public static List<OwnerAndPermission> resolveReplicatedOwnerAndPermissionsRecursively(FileSystem sourceFs, Path fromPath,
       Path toPath, CopyConfiguration copyConfiguration) throws IOException {
 
     if (!PathUtils.isAncestor(toPath, fromPath)) {
@@ -291,7 +291,7 @@ public class CopyableFile extends CopyEntity implements File {
     Path currentPath = fromPath;
 
     while (PathUtils.isAncestor(toPath, currentPath.getParent())) {
-      ownerAndPermissions.add(resolveReplicatedOwnerAndPermission(fs, currentPath, copyConfiguration));
+      ownerAndPermissions.add(resolveReplicatedOwnerAndPermission(sourceFs, currentPath, copyConfiguration));
       currentPath = currentPath.getParent();
     }
 

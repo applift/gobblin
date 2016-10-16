@@ -11,20 +11,13 @@
  */
 package gobblin.data.management.conversion.hive;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Properties;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
-import lombok.extern.slf4j.Slf4j;
-
-import org.apache.hadoop.hive.metastore.IMetaStoreClient;
-import org.apache.hadoop.hive.metastore.api.AlreadyExistsException;
-import org.apache.hadoop.hive.metastore.api.Database;
-import org.apache.hadoop.hive.metastore.api.FieldSchema;
-import org.apache.hadoop.hive.metastore.api.Partition;
-import org.apache.hadoop.hive.metastore.api.SerDeInfo;
-import org.apache.hadoop.hive.metastore.api.StorageDescriptor;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.metastore.api.Table;
+import org.joda.time.DateTime;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -32,35 +25,29 @@ import org.testng.annotations.Test;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 import gobblin.configuration.ConfigurationKeys;
 import gobblin.configuration.SourceState;
 import gobblin.configuration.WorkUnitState;
-import gobblin.data.management.conversion.hive.mock.MockUpdateProvider;
-import gobblin.data.management.conversion.hive.mock.MockUpdateProviderFactory;
-import gobblin.data.management.convertion.hive.HiveSource;
-import gobblin.hive.HiveMetastoreClientPool;
-import gobblin.hive.HivePartition;
-import gobblin.hive.HiveRegistrationUnit;
-import gobblin.hive.HiveTable;
-import gobblin.source.extractor.extract.LongWatermark;
+import gobblin.data.management.ConversionHiveTestUtils;
+import gobblin.data.management.conversion.hive.source.HiveSource;
+import gobblin.data.management.conversion.hive.source.HiveWorkUnit;
+import gobblin.data.management.conversion.hive.watermarker.PartitionLevelWatermarker;
+import gobblin.data.management.conversion.hive.watermarker.TableLevelWatermarker;
 import gobblin.source.workunit.WorkUnit;
 
 
-@Slf4j
 @Test(groups = { "gobblin.data.management.conversion" })
 public class HiveSourceTest {
 
-  private IMetaStoreClient localMetastoreClient;
+  private LocalHiveMetastoreTestUtils hiveMetastoreTestUtils;
   private HiveSource hiveSource;
-  private MockUpdateProvider updateProvider;
 
   @BeforeClass
   public void setup() throws Exception {
-    this.localMetastoreClient =
-        HiveMetastoreClientPool.get(new Properties(), Optional.<String> absent()).getClient().get();
+    this.hiveMetastoreTestUtils = LocalHiveMetastoreTestUtils.getInstance();
     this.hiveSource = new HiveSource();
-    this.updateProvider = MockUpdateProvider.getInstance();
   }
 
   @Test
@@ -70,25 +57,29 @@ public class HiveSourceTest {
     String tableName = "testtable2";
     String tableSdLoc = "/tmp/testtable2";
 
-    this.localMetastoreClient.dropDatabase(dbName, false, true, true);
+    this.hiveMetastoreTestUtils.getLocalMetastoreClient().dropDatabase(dbName, false, true, true);
 
     SourceState testState = getTestState(dbName);
 
-    createTestTable(dbName, tableName, tableSdLoc, Optional.<String> absent());
+    this.hiveMetastoreTestUtils.createTestTable(dbName, tableName, tableSdLoc, Optional.<String> absent());
 
-    this.updateProvider.addMockUpdateTime(dbName + "@" + tableName, 10);
+    List<WorkUnit> workUnits = hiveSource.getWorkunits(testState);
 
-    List<WorkUnit> workUnits = this.hiveSource.getWorkunits(testState);
-
-    Assert.assertEquals(workUnits.size(), 1);
+    // One workunit for the table + 1 dummy watermark workunit
+    Assert.assertEquals(workUnits.size(), 2);
     WorkUnit wu = workUnits.get(0);
-    HiveRegistrationUnit hiveUnit = HiveSource.GENERICS_AWARE_GSON
-        .fromJson(wu.getProp(HiveSource.HIVE_UNIT_SERIALIZED_KEY), HiveRegistrationUnit.class);
-    Assert.assertTrue(hiveUnit instanceof HiveTable, "Serialized hive unit is not a table");
-    Assert.assertEquals(hiveUnit.getDbName(), dbName);
-    Assert.assertEquals(hiveUnit.getTableName(), tableName);
-    Assert.assertEquals(hiveUnit.getLocation().get(), "file:" + tableSdLoc);
+    WorkUnit wu2 = workUnits.get(1);
 
+    HiveWorkUnit hwu = null;
+    if (!wu.contains(PartitionLevelWatermarker.IS_WATERMARK_WORKUNIT_KEY)) {
+      hwu = new HiveWorkUnit(wu);
+    } else {
+      hwu = new HiveWorkUnit(wu2);
+    }
+
+    Assert.assertEquals(hwu.getHiveDataset().getDbAndTable().getDb(), dbName);
+    Assert.assertEquals(hwu.getHiveDataset().getDbAndTable().getTable(), tableName);
+    Assert.assertEquals(hwu.getTableSchemaUrl(), new Path("/tmp/dummy"));
   }
 
   @Test
@@ -98,31 +89,31 @@ public class HiveSourceTest {
     String tableName = "testtable3";
     String tableSdLoc = "/tmp/testtable3";
 
-    this.localMetastoreClient.dropDatabase(dbName, false, true, true);
+    this.hiveMetastoreTestUtils.getLocalMetastoreClient().dropDatabase(dbName, false, true, true);
 
     SourceState testState = getTestState(dbName);
 
-    Table tbl = createTestTable(dbName, tableName, tableSdLoc, Optional.of("field"));
+    Table tbl = this.hiveMetastoreTestUtils.createTestTable(dbName, tableName, tableSdLoc, Optional.of("field"));
 
-    Partition partition = addTestPartition(tbl, ImmutableList.of("f1"));
-
-    this.updateProvider.addMockUpdateTime("testdb3@testtable3@field=f1", 2);
+    this.hiveMetastoreTestUtils.addTestPartition(tbl, ImmutableList.of("f1"), (int) System.currentTimeMillis());
 
     List<WorkUnit> workUnits = this.hiveSource.getWorkunits(testState);
 
-    Assert.assertEquals(workUnits.size(), 1);
+    // One workunit for the partition + 1 dummy watermark workunit
+    Assert.assertEquals(workUnits.size(), 2);
     WorkUnit wu = workUnits.get(0);
-    HiveRegistrationUnit hiveUnit = HiveSource.GENERICS_AWARE_GSON
-        .fromJson(wu.getProp(HiveSource.HIVE_UNIT_SERIALIZED_KEY), HiveRegistrationUnit.class);
+    WorkUnit wu2 = workUnits.get(1);
 
-    Assert.assertEquals(hiveUnit.getDbName(), dbName);
-    Assert.assertEquals(hiveUnit.getTableName(), tableName);
-    Assert.assertEquals(hiveUnit.getLocation().get(), partition.getSd().getLocation());
+    HiveWorkUnit hwu = null;
+    if (!wu.contains(PartitionLevelWatermarker.IS_WATERMARK_WORKUNIT_KEY)) {
+      hwu = new HiveWorkUnit(wu);
+    } else {
+      hwu = new HiveWorkUnit(wu2);
+    }
 
-    Assert.assertTrue(hiveUnit instanceof HivePartition, "Serialized hive unit is not a partition");
-    HivePartition hivePartition = (HivePartition) hiveUnit;
-    Assert.assertEquals(hivePartition.getValues().get(0), "f1");
-
+    Assert.assertEquals(hwu.getHiveDataset().getDbAndTable().getDb(), dbName);
+    Assert.assertEquals(hwu.getHiveDataset().getDbAndTable().getTable(), tableName);
+    Assert.assertEquals(hwu.getPartitionName().get(), "field=f1");
   }
 
   @Test
@@ -134,92 +125,97 @@ public class HiveSourceTest {
     String tableName2 = "testtable2";
     String tableSdLoc2 = "/tmp/testtable2";
 
-    this.localMetastoreClient.dropDatabase(dbName, false, true, true);
+    this.hiveMetastoreTestUtils.getLocalMetastoreClient().dropDatabase(dbName, false, true, true);
+
+    this.hiveMetastoreTestUtils.createTestTable(dbName, tableName1, tableSdLoc1, Optional.<String> absent());
+    this.hiveMetastoreTestUtils.createTestTable(dbName, tableName2, tableSdLoc2, Optional.<String> absent(), true);
 
     List<WorkUnitState> previousWorkUnitStates = Lists.newArrayList();
-    previousWorkUnitStates.add(createPreviousWus(dbName, tableName1, 10));
-    previousWorkUnitStates.add(createPreviousWus(dbName, tableName2, 10));
+
+    Table table1 = this.hiveMetastoreTestUtils.getLocalMetastoreClient().getTable(dbName, tableName1);
+
+    previousWorkUnitStates.add(ConversionHiveTestUtils.createWus(dbName, tableName1,
+        TimeUnit.MILLISECONDS.convert(table1.getCreateTime(), TimeUnit.SECONDS)));
 
     SourceState testState = new SourceState(getTestState(dbName), previousWorkUnitStates);
-
-    createTestTable(dbName, tableName1, tableSdLoc1, Optional.<String> absent());
-    createTestTable(dbName, tableName2, tableSdLoc2, Optional.<String> absent(), true);
-
-    this.updateProvider.addMockUpdateTime(dbName + "@" + tableName1, 10);
-    this.updateProvider.addMockUpdateTime(dbName + "@" + tableName2, 15);
+    testState.setProp(HiveSource.HIVE_SOURCE_WATERMARKER_FACTORY_CLASS_KEY, TableLevelWatermarker.Factory.class.getName());
 
     List<WorkUnit> workUnits = this.hiveSource.getWorkunits(testState);
 
     Assert.assertEquals(workUnits.size(), 1);
     WorkUnit wu = workUnits.get(0);
-    HiveRegistrationUnit hiveUnit = HiveSource.GENERICS_AWARE_GSON
-        .fromJson(wu.getProp(HiveSource.HIVE_UNIT_SERIALIZED_KEY), HiveRegistrationUnit.class);
-    Assert.assertTrue(hiveUnit instanceof HiveTable, "Serialized hive unit is not a table");
-    Assert.assertEquals(hiveUnit.getDbName(), dbName);
-    Assert.assertEquals(hiveUnit.getTableName(), tableName2);
 
+    HiveWorkUnit hwu = new HiveWorkUnit(wu);
+
+    Assert.assertEquals(hwu.getHiveDataset().getDbAndTable().getDb(), dbName);
+    Assert.assertEquals(hwu.getHiveDataset().getDbAndTable().getTable(), tableName2);
   }
 
-  private static WorkUnitState createPreviousWus(String dbName, String tableName, long watermark) {
+  @Test
+  public void testShouldCreateWorkunitsOlderThanLookback() throws Exception {
 
-    WorkUnitState wus = new WorkUnitState();
-    wus.setActualHighWatermark(new LongWatermark(watermark));
-    wus.setProp(ConfigurationKeys.DATASET_URN_KEY, dbName + "@" + tableName);
+    long currentTime = System.currentTimeMillis();
+    long partitionCreateTime = new DateTime(currentTime).minusDays(35).getMillis();
 
-    return wus;
+    org.apache.hadoop.hive.ql.metadata.Partition partition =
+        this.hiveMetastoreTestUtils.createDummyPartition(partitionCreateTime);
+
+    SourceState testState = getTestState("testDb6");
+    HiveSource source = new HiveSource();
+    source.initialize(testState);
+
+    boolean isOlderThanLookback = source.isOlderThanLookback(partition);
+
+    Assert.assertEquals(isOlderThanLookback, true, "Should not create workunits older than lookback");
   }
 
-  private Table createTestTable(String dbName, String tableName, String tableSdLoc, Optional<String> partitionFieldName)
-      throws Exception {
-    return createTestTable(dbName, tableName, tableSdLoc, partitionFieldName, false);
+  @Test
+  public void testShouldCreateWorkunitsNewerThanLookback() throws Exception {
+
+    long currentTime = System.currentTimeMillis();
+    // Default lookback time is 3 days
+    long partitionCreateTime = new DateTime(currentTime).minusDays(2).getMillis();
+
+    org.apache.hadoop.hive.ql.metadata.Partition partition =
+        this.hiveMetastoreTestUtils.createDummyPartition(partitionCreateTime);
+
+    SourceState testState = getTestState("testDb7");
+    HiveSource source = new HiveSource();
+    source.initialize(testState);
+
+    boolean isOlderThanLookback = source.isOlderThanLookback(partition);
+
+    Assert.assertEquals(isOlderThanLookback, false, "Should create workunits newer than lookback");
   }
 
-  private Table createTestTable(String dbName, String tableName, String tableSdLoc, Optional<String> partitionFieldName,
-      boolean ignoreDbCreation) throws Exception {
-    if (!ignoreDbCreation) {
-      createTestDb(dbName);
-    }
-    Table tbl = org.apache.hadoop.hive.ql.metadata.Table.getEmptyTable(dbName, tableName);
-    tbl.getSd().setLocation(tableSdLoc);
-    if (partitionFieldName.isPresent()) {
-      tbl.addToPartitionKeys(new FieldSchema(partitionFieldName.get(), "string", "some comment"));
-    }
-    this.localMetastoreClient.createTable(tbl);
+  @Test
+  public void testIsOlderThanLookbackForDistcpGenerationTime() throws Exception {
 
-    return tbl;
-  }
+    long currentTime = System.currentTimeMillis();
+    // Default lookback time is 3 days
+    long partitionCreateTime = new DateTime(currentTime).minusDays(2).getMillis();
+    Map<String, String> parameters = Maps.newHashMap();
+    parameters.put(HiveSource.DISTCP_REGISTRATION_GENERATION_TIME_KEY, partitionCreateTime + "");
 
-  private void createTestDb(String dbName) throws Exception {
+    org.apache.hadoop.hive.ql.metadata.Partition partition = this.hiveMetastoreTestUtils.createDummyPartition(0);
+    partition.getTPartition().setParameters(parameters);
 
-    Database db = new Database(dbName, "Some description", "/tmp/" + dbName, new HashMap<String, String>());
-    try {
-      this.localMetastoreClient.createDatabase(db);
-    } catch (AlreadyExistsException e) {
-      log.warn(dbName + " already exits");
-    }
+    SourceState testState = getTestState("testDb6");
+    HiveSource source = new HiveSource();
+    source.initialize(testState);
 
+    boolean isOlderThanLookback = source.isOlderThanLookback(partition);
+
+    Assert.assertEquals(isOlderThanLookback, false, "Should create workunits newer than lookback");
   }
 
   private static SourceState getTestState(String dbName) {
     SourceState testState = new SourceState();
     testState.setProp("hive.dataset.database", dbName);
     testState.setProp("hive.dataset.table.pattern", "*");
-    testState.setProp("hive.unit.updateProviderFactory.class", MockUpdateProviderFactory.class.getCanonicalName());
+    testState.setProp(ConfigurationKeys.JOB_ID_KEY, "testJobId");
+
     return testState;
-  }
-
-  private Partition addTestPartition(Table tbl, List<String> values) throws Exception {
-    StorageDescriptor partitionSd = new StorageDescriptor();
-    partitionSd.setLocation("/tmp/" + tbl.getTableName() + "/part1");
-    partitionSd.setSerdeInfo(new SerDeInfo("name", "serializationLib", new HashMap<String, String>()));
-    partitionSd.setCols(tbl.getPartitionKeys());
-
-    Partition partition =
-        new Partition(values, tbl.getDbName(), tbl.getTableName(), 1, 1, partitionSd, new HashMap<String, String>());
-
-    this.localMetastoreClient.add_partition(partition);
-
-    return partition;
   }
 
 }
