@@ -9,13 +9,17 @@ import java.util.regex.Pattern;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import gobblin.configuration.WorkUnitState;
 import gobblin.converter.Converter;
 import gobblin.converter.DataConversionException;
 import gobblin.converter.SchemaConversionException;
+import gobblin.converter.SingleRecordIterable;
 
 public class PSVToJSONConverter extends Converter<Object, Object, String, String>{
+  private static final Logger LOG = LoggerFactory.getLogger(PSVToJSONConverter.class);
   ObjectMapper mapper = new ObjectMapper();
   
   @Override
@@ -28,6 +32,8 @@ public class PSVToJSONConverter extends Converter<Object, Object, String, String
   @Override
   public Iterable<String> convertRecord(Object outputSchema, String inputRecord,
       WorkUnitState workUnit) throws DataConversionException { 
+    if (inputRecord.contains("LOGROTATE"))
+      return new SingleRecordIterable<String>(inputRecord);
     String[] psvRecords = inputRecord.split("\n");
     List<String> jsonRecords = new ArrayList<String>();
     for (String psvRecord : psvRecords) {
@@ -35,6 +41,7 @@ public class PSVToJSONConverter extends Converter<Object, Object, String, String
         jsonRecords.add(psvToJson(psvRecord));
       } catch (IOException e) {
         // TODO Auto-generated catch block
+        LOG.error("Erroneous Record : " + psvRecord);
         e.printStackTrace();
       }
     }
