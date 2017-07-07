@@ -70,7 +70,7 @@ import gobblin.converter.ToAvroConverterBase;
 @SuppressWarnings("unused")
 public class JsonToAvroConverter extends ToAvroConverterBase<Schema, String> {
   private static final Logger LOG = LoggerFactory.getLogger(JsonToAvroConverter.class);
-  private final ObjectMapper mapper = new ObjectMapper();
+  private final static ObjectMapper mapper = new ObjectMapper();
 
   @Override
   public Schema convertSchema(Schema inputSchema, WorkUnitState workUnit) throws SchemaConversionException {
@@ -107,7 +107,7 @@ public class JsonToAvroConverter extends ToAvroConverterBase<Schema, String> {
   }
 
   @SuppressWarnings({ "unchecked", "rawtypes" })
-  private GenericRecord convert(Map<String, Object> raw, Schema schema) throws IOException {
+  public static GenericRecord convert(Map<String, Object> raw, Schema schema) throws IOException {
     GenericRecord result = new GenericData.Record(schema);
     for (Schema.Field f : schema.getFields()) {
       String name = f.name();
@@ -178,7 +178,7 @@ public class JsonToAvroConverter extends ToAvroConverterBase<Schema, String> {
   }
 
   @SuppressWarnings({ "unchecked", "rawtypes" })
-  private Object typeConvert(Object value, String name, Schema schema) throws IOException {
+  private static Object typeConvert(Object value, String name, Schema schema) throws IOException {
     if (isNullableSchema(schema)) {
       if (value == null) {
         return null;
@@ -259,13 +259,13 @@ public class JsonToAvroConverter extends ToAvroConverterBase<Schema, String> {
     throw new JsonConversionException(value, name, schema);
   }
 
-  private boolean isNullableSchema(Schema schema) {
+  private static boolean isNullableSchema(Schema schema) {
     return schema.getType().equals(Schema.Type.UNION) && schema.getTypes().size() == 2
         && (schema.getTypes().get(0).getType().equals(Schema.Type.NULL)
             || schema.getTypes().get(1).getType().equals(Schema.Type.NULL));
   }
 
-  private Schema getNonNull(Schema schema) {
+  private static Schema getNonNull(Schema schema) {
     List<Schema> types = schema.getTypes();
     return types.get(0).getType().equals(Schema.Type.NULL) ? types.get(1) : types.get(0);
   }

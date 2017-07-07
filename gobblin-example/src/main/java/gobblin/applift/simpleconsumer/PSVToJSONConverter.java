@@ -20,7 +20,7 @@ import gobblin.converter.SingleRecordIterable;
 
 public class PSVToJSONConverter extends Converter<Object, Object, String, String>{
   private static final Logger LOG = LoggerFactory.getLogger(PSVToJSONConverter.class);
-  ObjectMapper mapper = new ObjectMapper();
+  private static ObjectMapper mapper = new ObjectMapper();
   
   @Override
   public Object convertSchema(Object inputSchema, WorkUnitState workUnit)
@@ -48,7 +48,7 @@ public class PSVToJSONConverter extends Converter<Object, Object, String, String
     return jsonRecords;
   }
 
-  private String psvToJson(String psvRecord) throws IOException {
+  public static String psvToJson(String psvRecord) throws IOException {
     String[] fields = psvRecord.split("\\|");
     ClickHouseRecord record = new ClickHouseRecord();
     record.setExchangeId(fields[0]);
